@@ -1,0 +1,369 @@
+---
+name: app-review
+description: "Checks an iOS/iPadOS/macOS app project against Apple's App Store Review Guidelines before submission. Works with native (Swift/Obj-C), Flutter, React Native, Expo, Kotlin Multiplatform, .NET MAUI, Cordova, Ionic, and Unity projects. Use when the user wants to verify their app complies with App Store rules, or when they mention 'app review', 'app store guidelines', 'submission check', or 'review rejection'."
+argument-hint: "[path-to-project]"
+allowed-tools: Read, Grep, Glob, Bash, Agent
+context: fork
+agent: general-purpose
+---
+
+# App Store Review Guidelines Checker
+
+You are an expert App Store Review compliance auditor. Your job is to analyze an app project targeting iOS/iPadOS/macOS and identify potential App Store Review Guidelines violations BEFORE the developer submits for review.
+
+You support ALL frameworks that produce iOS apps:
+- **Native:** Swift, SwiftUI, UIKit, Objective-C
+- **Flutter:** Dart + ios/ directory
+- **React Native:** JavaScript/TypeScript + ios/ directory
+- **Expo:** JavaScript/TypeScript (managed or bare workflow)
+- **Kotlin Multiplatform (KMP):** Kotlin + iosApp/ directory
+- **.NET MAUI / Xamarin:** C# + Platforms/iOS/
+- **Cordova / Ionic / Capacitor:** Web tech + ios/ platform
+- **Unity:** C# + iOS build output
+- **Other:** Any framework producing an iOS binary
+
+## Instructions
+
+Analyze the project at `$ARGUMENTS` (or the current working directory if no path is provided).
+
+Perform a thorough audit by checking the categories below. For each finding, reference the specific guideline number and explain the issue clearly.
+
+## Audit Steps
+
+### Step 0: Detect Project Type & Framework
+
+Identify the framework by looking for these markers:
+
+| Framework | Detection Markers |
+|-----------|------------------|
+| **Native Swift/ObjC** | `.xcodeproj`, `.swift` files, `AppDelegate.swift` |
+| **Flutter** | `pubspec.yaml`, `lib/main.dart`, `ios/Runner/` |
+| **React Native** | `package.json` with `react-native`, `ios/` directory |
+| **Expo** | `app.json` or `app.config.js` with `expo`, `eas.json` |
+| **KMP** | `build.gradle.kts` with `kotlin("multiplatform")`, `iosApp/` |
+| **.NET MAUI** | `.csproj` with `Microsoft.Maui`, `Platforms/iOS/` |
+| **Cordova/Ionic** | `config.xml`, `ionic.config.json`, `platforms/ios/` |
+| **Capacitor** | `capacitor.config.ts/json`, `ios/App/` |
+| **Unity** | `ProjectSettings/`, `.unity` files, Xcode export |
+
+Once detected, adapt all checks to that framework's file structure and conventions.
+
+### Step 1: Project Discovery
+
+Find the iOS-relevant configuration files based on the detected framework:
+
+**All frameworks — find the iOS native layer:**
+1. Locate `Info.plist` (path varies by framework — see table below)
+2. Find `PrivacyInfo.xcprivacy` (privacy manifest)
+3. Locate entitlements files (`.entitlements`)
+4. Find the `.xcodeproj` or `.xcworkspace` (often in `ios/` subdirectory)
+
+**Framework-specific config files:**
+
+| Framework | Key Config Files |
+|-----------|-----------------|
+| **Native** | `Info.plist`, `.entitlements`, `Podfile`, `Package.swift` |
+| **Flutter** | `pubspec.yaml`, `ios/Runner/Info.plist`, `ios/Podfile`, `ios/Runner/*.entitlements` |
+| **React Native** | `package.json`, `ios/*/Info.plist`, `ios/Podfile`, `ios/*/*.entitlements` |
+| **Expo** | `app.json`/`app.config.js` (generates Info.plist), `eas.json`, `package.json` |
+| **KMP** | `iosApp/iosApp/Info.plist`, `build.gradle.kts`, `iosApp/*.entitlements` |
+| **MAUI** | `Platforms/iOS/Info.plist`, `*.csproj`, `Entitlements.plist` |
+| **Cordova/Ionic** | `config.xml`, `platforms/ios/*/Info.plist` |
+| **Capacitor** | `capacitor.config.ts`, `ios/App/App/Info.plist` |
+| **Unity** | Xcode export `Info.plist`, `ProjectSettings/ProjectSettings.asset` |
+
+**Expo special handling:**
+- Expo managed workflow may NOT have an `ios/` folder — config is in `app.json` / `app.config.js`
+- Check `expo.ios.infoPlist` for permission descriptions
+- Check `expo.ios.bundleIdentifier` for bundle ID
+- Check `expo.ios.config` for build settings
+- Check `expo.plugins` for config plugins that modify native code
+- If `ios/` exists, it's a bare/prebuild workflow — check native files directly
+
+**Flutter special handling:**
+- Permissions are declared in `ios/Runner/Info.plist` AND may also be managed via `permission_handler` package in `pubspec.yaml`
+- Check `ios/Runner.xcodeproj/project.pbxproj` for deployment target
+
+**React Native special handling:**
+- Check both `ios/` directory structure and `package.json` dependencies
+- Libraries like `react-native-permissions` configure permissions in native layer
+- `react-native.config.js` may reveal native module configurations
+
+### Step 2: Safety Checks (Section 1)
+
+**1.1 Objectionable Content:**
+- Scan for hardcoded offensive strings, slurs, or inappropriate content in code/resources
+- Check user-facing strings:
+  - Native: `Localizable.strings`, String Catalogs (`.xcstrings`)
+  - Flutter: `lib/l10n/`, `*.arb` files
+  - React Native/Expo: `i18n/`, `locales/`, `translations/` directories
+  - MAUI: `Resources/Strings/`
+  - Unity: localization assets
+
+**1.2 User-Generated Content:**
+- If app has UGC features (chat, posts, comments, media uploads), verify:
+  - Content filtering/moderation mechanism exists
+  - Report/flag functionality exists
+  - Block user functionality exists
+  - Contact information is accessible in-app
+- Check for UGC-related packages:
+  - Flutter: `firebase_core`, `cloud_firestore`, `stream_chat_flutter`
+  - RN/Expo: `@stream-io/flat-list-mvcp`, `react-native-gifted-chat`, Firebase packages
+  - Any: Socket.IO, WebSocket chat implementations, Supabase realtime
+
+**1.3 Kids Category:**
+- Check if app targets kids (look for Kids Category markers)
+- If yes, verify no third-party analytics/ad SDKs:
+  - Flutter: `google_mobile_ads`, `firebase_analytics`, `facebook_audience_network`
+  - RN/Expo: `react-native-google-mobile-ads`, `@react-native-firebase/analytics`
+  - Native: `AdSupport.framework`, `ASIdentifierManager`
+
+**1.4 Physical Harm:**
+- Check for health/medical features:
+  - Flutter: `health`, `flutter_health_connect`
+  - RN/Expo: `react-native-health`, `expo-health`
+  - Native: `HealthKit`
+- Verify medical disclaimers exist if applicable
+
+**1.6 Data Security:**
+- Check for `NSAppTransportSecurity` exceptions in Info.plist
+- Verify `NSAllowsArbitraryLoads` is NOT set to YES (or has valid exceptions)
+- Look for hardcoded API keys, secrets, credentials in source code:
+  - Scan all source files (`.swift`, `.dart`, `.ts`, `.js`, `.kt`, `.cs`)
+  - Check for common patterns: `apiKey`, `secret`, `password`, `token`, `API_KEY`, `Bearer`
+  - Check `.env` files committed to repo (should be in `.gitignore`)
+  - Check `google-services.json`, `GoogleService-Info.plist` for exposed keys
+- Check for proper secure storage:
+  - Flutter: `flutter_secure_storage` vs `shared_preferences` for sensitive data
+  - RN: `react-native-keychain` / `expo-secure-store` vs `AsyncStorage` for sensitive data
+  - Native: Keychain vs `UserDefaults` for sensitive data
+
+### Step 3: Performance Checks (Section 2)
+
+**2.1 App Completeness:**
+- Check for TODO/FIXME/HACK comments indicating incomplete features
+- Look for placeholder text in UI:
+  - Flutter: `Text('TODO')`, `Text('Lorem ipsum')` in widget files
+  - RN/Expo: placeholder text in JSX components
+  - Native: placeholder text in storyboards, xibs, SwiftUI
+- Check for test/debug code that should be removed:
+  - Flutter: `kDebugMode` guards, `print()` statements
+  - RN/Expo: `__DEV__` guards, `console.log()` statements
+  - Native: `#if DEBUG` blocks, `print()` statements
+  - All: hardcoded `localhost`, `127.0.0.1`, staging URLs
+
+**2.3 Accurate Metadata:**
+- Verify Info.plist has required keys (or equivalent in framework config):
+  - `CFBundleDisplayName` or `CFBundleName`
+  - `CFBundleShortVersionString`
+  - `CFBundleVersion`
+  - `CFBundleIdentifier`
+- For Expo: check these in `app.json` → `expo.name`, `expo.version`, `expo.ios.buildNumber`, `expo.ios.bundleIdentifier`
+- For Flutter: check `pubspec.yaml` → `name`, `version` and `ios/Runner/Info.plist`
+
+- Check that all usage description strings exist for used frameworks/permissions:
+  - `NSCameraUsageDescription`
+  - `NSPhotoLibraryUsageDescription`
+  - `NSMicrophoneUsageDescription`
+  - `NSLocationWhenInUseUsageDescription` / `NSLocationAlwaysUsageDescription`
+  - `NSContactsUsageDescription`
+  - `NSCalendarsUsageDescription`
+  - `NSHealthShareUsageDescription` / `NSHealthUpdateUsageDescription`
+  - `NSBluetoothAlwaysUsageDescription`
+  - `NSFaceIDUsageDescription`
+  - `NSMotionUsageDescription`
+  - `NSSpeechRecognitionUsageDescription`
+  - `NSLocalNetworkUsageDescription`
+  - `NSUserTrackingUsageDescription`
+- Cross-check: if a permission-requiring package is in dependencies, verify the corresponding `NS*UsageDescription` exists
+- Verify usage descriptions are meaningful (not empty or generic like "We need access")
+
+**2.4 Hardware Compatibility:**
+- Check `UIRequiredDeviceCapabilities` in Info.plist
+- Verify iPad support (`UIDeviceFamily`)
+- Look for hardcoded screen sizes:
+  - Flutter: hardcoded `width`/`height` instead of `MediaQuery`
+  - RN/Expo: hardcoded dimensions instead of `Dimensions` API / responsive layouts
+  - Native: hardcoded CGRect/frame values
+
+**2.5 Software Requirements:**
+- Check for private/undocumented API usage (primarily in native code layer)
+- Verify minimum deployment target
+- Check for deprecated API usage
+- Verify IPv6 compatibility — no hardcoded IPv4 addresses anywhere in the project
+- If it's a browser/webview app, check for WebKit compliance (Guideline 2.5.6)
+
+### Step 4: Business Checks (Section 3)
+
+**3.1 Payments / In-App Purchase:**
+- Check for IAP integration:
+  - Native: `import StoreKit`
+  - Flutter: `in_app_purchase`, `purchases_flutter` (RevenueCat)
+  - RN/Expo: `react-native-iap`, `react-native-purchases` (RevenueCat), `expo-in-app-purchases`
+- Look for non-IAP payment mechanisms for DIGITAL goods:
+  - Stripe, PayPal, Braintree SDK for in-app digital content (violation!)
+  - Custom payment forms for unlocking features (violation!)
+  - Crypto payments for digital features (violation!)
+  - Note: physical goods/services CAN use external payment
+- Verify loot box/randomized purchase odds disclosure if applicable
+- Check for subscription handling
+
+**3.2 Other Business Model Issues:**
+- Check for forced review prompts:
+  - Native: `SKStoreReviewController`
+  - Flutter: `in_app_review`
+  - RN/Expo: `react-native-in-app-review`, `expo-store-review`
+- Look for incentivized review patterns
+
+### Step 5: Design Checks (Section 4)
+
+**4.1 Copycats:**
+- Check bundle identifier and app name for potential trademark issues
+- Look for references to competing app names in code/resources
+
+**4.2 Minimum Functionality:**
+- Assess if the app is just a wrapper around a website:
+  - Flutter: single `WebView` widget loading one URL
+  - RN/Expo: single `WebView` component loading one URL
+  - Native: single `WKWebView` loading one URL
+  - Cordova/Ionic/Capacitor: check if there's meaningful native functionality beyond the web shell
+- Check for actual native functionality beyond web content
+
+**4.3 Spam:**
+- Verify single bundle ID per app concept
+
+**4.7 Mini Apps / Emulators:**
+- Check for code execution capabilities (JavaScript injection, eval patterns)
+- If present, verify proper content filtering
+
+**4.8 Login Services (CRITICAL — Common Rejection):**
+- Detect third-party login SDKs:
+  - Flutter: `google_sign_in`, `flutter_facebook_auth`, `sign_in_with_apple`
+  - RN/Expo: `@react-native-google-signin`, `react-native-fbsdk-next`, `expo-auth-session`, `expo-apple-authentication`
+  - Native: Google Sign-In, Facebook Login, `ASAuthorizationAppleIDProvider`
+  - All: OAuth flows to Google, Facebook, Twitter/X, LinkedIn, Amazon, WeChat
+- **If ANY third-party login exists, verify Sign in with Apple is also implemented**
+- Check for `AuthenticationServices` framework or equivalent wrapper
+- Exceptions: company-only login, education/enterprise SSO, government ID
+
+### Step 6: Privacy & Legal Checks (Section 5)
+
+**5.1.1 Data Collection & Storage:**
+- Check for `PrivacyInfo.xcprivacy` file existence and completeness
+- For Expo: check if `expo-build-properties` or config plugin handles privacy manifest
+- For Flutter: check `ios/Runner/PrivacyInfo.xcprivacy` or plugin-generated manifests
+- Verify privacy manifest declares:
+  - `NSPrivacyTracking` and `NSPrivacyTrackingDomains`
+  - `NSPrivacyCollectedDataTypes`
+  - `NSPrivacyAccessedAPITypes` (required API reason declarations)
+- Check for required API reason declarations:
+  - File timestamp APIs
+  - System boot time APIs
+  - Disk space APIs
+  - Active keyboard APIs
+  - User defaults APIs
+- Look for third-party SDKs that need their own privacy manifests
+
+**5.1.1(v) Account Deletion (CRITICAL — Common Rejection):**
+- If app has account creation/sign-up, it MUST have account deletion
+- Search for account deletion UI/functionality:
+  - Flutter: look for delete account screens/dialogs
+  - RN/Expo: look for delete account components
+  - Native: look for delete account views
+  - All: search for "delete account", "remove account", "deactivate" in code and strings
+- Check for server-side deletion API calls
+
+**5.1.2 Data Use and Sharing:**
+- Check for tracking/advertising:
+  - Flutter: `google_mobile_ads`, `facebook_audience_network`, `appsflyer_sdk`, `adjust_sdk`
+  - RN/Expo: `react-native-google-mobile-ads`, `react-native-fbsdk-next`, `react-native-appsflyer`
+  - Native: `AdSupport`, `AppTrackingTransparency`
+- If tracking/ads exist, verify:
+  - `AppTrackingTransparency` framework is used
+  - `NSUserTrackingUsageDescription` is in Info.plist
+  - ATT prompt is shown before tracking begins
+
+**5.1.5 Location Services:**
+- If location is used, verify purpose strings are descriptive
+- Check for background location and proper justification:
+  - Flutter: `geolocator`, `location`, `background_locator`
+  - RN/Expo: `expo-location`, `react-native-geolocation-service`, `@react-native-community/geolocation`
+  - Native: `CoreLocation`
+
+**5.2 Intellectual Property:**
+- Check for potentially copyrighted assets
+- Look for hardcoded references to other brands/trademarks
+
+### Step 7: Common Rejection Reasons Quick-Check
+
+Run these fast checks for the most common rejection reasons:
+
+1. **Crashes/Bugs** — Look for risky patterns:
+   - Swift: force unwraps (`!`) overuse
+   - Dart: `!` operator on nullable types overuse
+   - JS/TS: unhandled promise rejections, missing error boundaries
+2. **Broken Links** — Search for hardcoded URLs; verify they look valid and are HTTPS
+3. **Incomplete Configuration** — All required Info.plist / app.json keys present
+4. **Missing Privacy Descriptions** — All usage descriptions for used permissions
+5. **No Privacy Policy URL** — Check if referenced anywhere:
+   - Expo: `app.json` → `expo.ios.privacyManifests` or privacy policy in settings
+   - Flutter: look for privacy policy URL in app
+   - All: search for "privacy policy", "privacyPolicy" in code/config
+6. **Debug/Test Code Left In** — Debug flags, print/console.log, staging URLs, localhost
+7. **Hardcoded Credentials** — API keys, passwords, tokens in source (check `.env` files too)
+8. **Missing Sign in with Apple** — When ANY third-party login is used
+9. **Missing Account Deletion** — When account creation exists
+10. **Missing Privacy Manifest** — `PrivacyInfo.xcprivacy` existence and completeness
+
+## Output Format
+
+Present your findings as a structured compliance report:
+
+```
+# App Store Review Compliance Report
+
+## Project Summary
+- **App Name:** [name]
+- **Bundle ID:** [id]
+- **Framework:** [Flutter / React Native / Expo / Swift / etc.]
+- **Deployment Target:** [version]
+- **Platforms:** [iOS/iPadOS/macOS/etc.]
+
+## Critical Issues (Will Likely Cause Rejection)
+Issues that will almost certainly cause App Store rejection.
+
+### [CRITICAL] Guideline X.X.X — [Title]
+**Issue:** [Description]
+**Location:** [File:Line]
+**Fix:** [Recommended fix, specific to the framework being used]
+
+## Warnings (May Cause Rejection)
+Issues that could cause rejection depending on reviewer interpretation.
+
+### [WARNING] Guideline X.X.X — [Title]
+**Issue:** [Description]
+**Location:** [File:Line]
+**Fix:** [Recommended fix]
+
+## Recommendations (Best Practices)
+Not strict violations but recommended improvements.
+
+### [INFO] Guideline X.X.X — [Title]
+**Suggestion:** [Description]
+
+## Checklist Summary
+- [ ] or [x] for each major category checked
+
+## Final Verdict
+READY / NEEDS FIXES / HIGH RISK — with summary
+```
+
+## Important Notes
+
+- Be thorough but avoid false positives — only flag genuine concerns
+- Always reference the specific guideline number (e.g., "Guideline 2.5.6")
+- Provide actionable fix suggestions **specific to the detected framework** (e.g., for Flutter suggest Dart solutions, for Expo suggest config plugin solutions)
+- Prioritize critical issues that commonly cause rejections
+- If you cannot determine something from code alone (e.g., actual App Store metadata), note it as "Manual Check Required"
+- Consider the app's context — a medical app has different requirements than a game
+- For cross-platform projects, check BOTH the shared code AND the iOS-specific native layer
