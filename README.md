@@ -23,20 +23,19 @@ This skill auto-detects your project type and adapts all checks accordingly:
 
 ## Installation
 
-```bash
-# In Claude Code
-/install-skill https://github.com/devsemih/appstore-review-skill
-```
-
-Or manually:
+### Global (all projects)
 
 ```bash
-# Available in all your projects
-cp -r appstore-review-skill ~/.claude/skills/
-
-# Or project-specific only
-cp -r appstore-review-skill .claude/skills/
+git clone https://github.com/devsemih/appstore-review-skill ~/.claude/skills/app-review
 ```
+
+### Project-specific only
+
+```bash
+git clone https://github.com/devsemih/appstore-review-skill .claude/skills/app-review
+```
+
+Then restart Claude Code. The `/app-review` command will be available.
 
 ## Usage
 
