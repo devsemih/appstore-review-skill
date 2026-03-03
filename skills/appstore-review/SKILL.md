@@ -1,5 +1,5 @@
 ---
-name: run
+name: appstore-review
 description: "Checks an iOS/iPadOS/macOS app project against Apple's App Store Review Guidelines before submission. Works with native (Swift/Obj-C), Flutter, React Native, Expo, Kotlin Multiplatform, .NET MAUI, Cordova, Ionic, and Unity projects. Use when the user wants to verify their app complies with App Store rules, or when they mention 'app review', 'app store guidelines', 'submission check', or 'review rejection'."
 argument-hint: "[path-to-project]"
 allowed-tools: Read, Grep, Glob, Bash, Agent
