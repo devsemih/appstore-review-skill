@@ -2,7 +2,7 @@
 
 > A Claude Code plugin that audits your iOS app against Apple's App Store Review Guidelines — **before** Apple rejects it.
 
-Stop guessing. Run `/appstore-review-skill:run` and get a full compliance report in seconds.
+Stop guessing. Run `/appstore-review-skill:appstore-review` and get a full compliance report in seconds.
 
 ---
 
@@ -65,7 +65,7 @@ cd ~/.claude/skills/appstore-review-skill && git pull
 Open your project in Claude Code and run:
 
 ```
-/appstore-review-skill:run
+/appstore-review-skill:appstore-review
 ```
 
 That's it. The skill will scan your project and output a structured compliance report.
