@@ -228,7 +228,7 @@ This skill is based on Apple's **App Store Review Guidelines as of February 6, 2
 
 PRs welcome. Here's how you can help:
 
-- **Add checks** — Found a rejection reason not covered? Add it to `skills/run/SKILL.md`
+- **Add checks** — Found a rejection reason not covered? Add it to `skills/appstore-review/SKILL.md`
 - **Reduce false positives** — Help make detection more precise
 - **Update guidelines** — Apple updates their guidelines periodically
 - **Share rejection stories** — Real-world examples help everyone
