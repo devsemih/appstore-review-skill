@@ -9,7 +9,11 @@ agent: general-purpose
 
 # App Store Review Guidelines Checker
 
+> **Guidelines version:** Based on Apple's App Store Review Guidelines as of February 6, 2026. If you encounter guideline references you're unsure about, consult the reference document below for the exact wording.
+
 You are an expert App Store Review compliance auditor. Your job is to analyze an app project targeting iOS/iPadOS/macOS and identify potential App Store Review Guidelines violations BEFORE the developer submits for review.
+
+**Reference document:** Before starting the audit, read the guidelines summary at `references/guidelines-summary.md` (relative to the skill installation directory). Use it to verify exact guideline wording and section numbers when reporting findings. If the file is not accessible, proceed using your knowledge of the guidelines but note this in the report.
 
 You support ALL frameworks that produce iOS apps:
 - **Native:** Swift, SwiftUI, UIKit, Objective-C
@@ -27,6 +31,16 @@ You support ALL frameworks that produce iOS apps:
 Analyze the project at `$ARGUMENTS` (or the current working directory if no path is provided).
 
 Perform a thorough audit by checking the categories below. For each finding, reference the specific guideline number and explain the issue clearly.
+
+## Prioritization Strategy
+
+**Always complete the audit steps in the order listed, but prioritize depth on high-rejection-risk areas.** If the project is large, allocate your effort as follows:
+
+1. **Must complete (critical rejection risks):** Steps 0–1, then focus on: Sign in with Apple (4.8), Account Deletion (5.1.1v), Privacy Manifest (5.1.1), IAP compliance (3.1), Usage Descriptions (2.3)
+2. **Should complete:** Remaining items in Steps 2–7
+3. **If time allows:** Recommendations and best-practice suggestions
+
+If you are running low on turns, skip Step 7 (Quick-Check) — its items overlap with Steps 2–6. Always produce the final report even if some lower-priority checks were skipped; note any skipped sections in the report.
 
 ## Audit Steps
 
@@ -77,8 +91,12 @@ Find the iOS-relevant configuration files based on the detected framework:
 - Check `expo.ios.infoPlist` for permission descriptions
 - Check `expo.ios.bundleIdentifier` for bundle ID
 - Check `expo.ios.config` for build settings
-- Check `expo.plugins` for config plugins that modify native code
+- Check `expo.plugins` for config plugins that modify native code — many plugins inject permissions, entitlements, and Info.plist keys at build time (e.g., `expo-camera` auto-adds `NSCameraUsageDescription`). Read each plugin's config to understand what native changes it makes.
+- Check `eas.json` for build profiles — verify the `production` profile exists and does not include `developmentClient: true` or debug-only settings
+- If `expo-dev-client` is in dependencies, verify it is NOT included in production builds (should only be in development profile)
+- Check `expo.ios.privacyManifests` in `app.json` for privacy manifest configuration (Expo SDK 50+)
 - If `ios/` exists, it's a bare/prebuild workflow — check native files directly
+- For prebuild workflow: run `npx expo config --type introspect` mentally — the final native config is a merge of `app.json` + all plugins
 
 **Flutter special handling:**
 - Permissions are declared in `ios/Runner/Info.plist` AND may also be managed via `permission_handler` package in `pubspec.yaml`
@@ -206,7 +224,18 @@ Find the iOS-relevant configuration files based on the detected framework:
   - Crypto payments for digital features (violation!)
   - Note: physical goods/services CAN use external payment
 - Verify loot box/randomized purchase odds disclosure if applicable
-- Check for subscription handling
+
+**3.1.2 Subscriptions & Restore Purchases (Common Rejection):**
+- If app has IAP or subscriptions, verify a **"Restore Purchases"** button exists:
+  - Native: look for `SKPaymentQueue.restoreCompletedTransactions()` or StoreKit 2 `Transaction.currentEntitlements`
+  - Flutter: look for `InAppPurchase.instance.restorePurchases()` or RevenueCat `Purchases.restorePurchases()`
+  - RN/Expo: look for `RNIap.getAvailablePurchases()` or RevenueCat `Purchases.restorePurchases()`
+- If app has subscriptions, verify subscription management:
+  - A way for users to view their active subscription status
+  - A link or instructions to manage/cancel subscription (can link to iOS Settings)
+  - Clear display of subscription terms (price, duration, renewal period) BEFORE purchase
+  - Free trial terms clearly stated if offered (e.g., "3-day free trial, then $9.99/month")
+- Check that subscription paywall does NOT block access before showing terms
 
 **3.2 Other Business Model Issues:**
 - Check for forced review prompts:
@@ -352,7 +381,22 @@ Not strict violations but recommended improvements.
 **Suggestion:** [Description]
 
 ## Checklist Summary
-- [ ] or [x] for each major category checked
+- [ ] Project type & framework detected
+- [ ] Info.plist / app.json metadata complete
+- [ ] All NS*UsageDescription keys present for used permissions
+- [ ] No hardcoded secrets or API keys in source
+- [ ] App Transport Security properly configured
+- [ ] Privacy manifest (PrivacyInfo.xcprivacy) present and complete
+- [ ] Sign in with Apple implemented (if third-party login exists)
+- [ ] Account deletion available (if account creation exists)
+- [ ] In-App Purchase used for digital goods (no external payment for digital content)
+- [ ] Restore Purchases mechanism exists (if IAP/subscriptions present)
+- [ ] Subscription terms clearly displayed before purchase
+- [ ] No debug/test code in production paths
+- [ ] No placeholder or TODO content in UI
+- [ ] Privacy policy URL referenced in app
+- [ ] App Tracking Transparency implemented (if tracking/ad SDKs present)
+- [ ] UGC moderation in place (if user-generated content exists)
 
 ## Final Verdict
 READY / NEEDS FIXES / HIGH RISK — with summary

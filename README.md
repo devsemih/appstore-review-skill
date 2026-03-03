@@ -211,4 +211,10 @@ MIT — see [LICENSE](LICENSE)
 
 ---
 
+## Guidelines Version
+
+This skill is based on Apple's **App Store Review Guidelines as of February 6, 2026**. Apple updates these guidelines periodically — if you encounter a mismatch, please open an issue or PR.
+
+---
+
 **Disclaimer:** This skill checks against publicly available Apple guidelines. It does not guarantee App Store approval. Always review the [official guidelines](https://developer.apple.com/app-store/review/guidelines/) before submission.
