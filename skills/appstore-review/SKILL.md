@@ -117,6 +117,8 @@ Find the iOS-relevant configuration files based on the detected framework:
   - React Native/Expo: `i18n/`, `locales/`, `translations/` directories
   - MAUI: `Resources/Strings/`
   - Unity: localization assets
+- **(1.1.6)** Scan for fake location tracker code, prank call/SMS libraries (e.g., Twilio/Plivo used for pranks), or trick/joke features that mislead users
+- **(1.1.7)** Scan user-facing strings for references capitalizing on recent disasters, epidemics, conflicts, or terrorist events as themes or branding
 
 **1.2 User-Generated Content:**
 - If app has UGC features (chat, posts, comments, media uploads), verify:
@@ -124,6 +126,7 @@ Find the iOS-relevant configuration files based on the detected framework:
   - Report/flag functionality exists
   - Block user functionality exists
   - Contact information is accessible in-app
+- **(1.2.1a)** If app has creator/UGC content platforms, verify age-gating mechanism exists for content exceeding the app's age rating (search for age verification flows, date-of-birth pickers)
 - Check for UGC-related packages:
   - Flutter: `firebase_core`, `cloud_firestore`, `stream_chat_flutter`
   - RN/Expo: `@stream-io/flat-list-mvcp`, `react-native-gifted-chat`, Firebase packages
@@ -144,6 +147,8 @@ Find the iOS-relevant configuration files based on the detected framework:
 - Verify medical disclaimers exist if applicable
 - Check drug dosage calculators come from approved entities (Guideline 1.4.2)
 - Check app does not encourage tobacco, vape, illegal drugs, or excessive alcohol (Guideline 1.4.3)
+- **(1.4.4)** If app displays DUI checkpoint data, verify it uses only law-enforcement-published sources
+- **(1.4.5)** Scan for challenge/bet patterns in UI that could encourage risky physical activity while using the device
 
 **1.5 Developer Information:**
 - Verify app includes accessible contact information / support URL
@@ -173,6 +178,7 @@ Find the iOS-relevant configuration files based on the detected framework:
 **2.1 App Completeness (includes 2.2 Beta Testing):**
 - Verify app is not labeled as "beta", "trial", or "demo" in code/UI/config (Guideline 2.2 — use TestFlight for betas)
 - Search for "beta", "trial", "demo version" in user-facing strings and app name
+- **(2.1b)** If IAP products are defined (StoreKit config files, product ID arrays), verify each has corresponding fulfillment/delivery code
 - Check for TODO/FIXME/HACK comments indicating incomplete features (Guideline 2.1)
 - Look for placeholder text in UI:
   - Flutter: `Text('TODO')`, `Text('Lorem ipsum')` in widget files
@@ -192,6 +198,10 @@ Find the iOS-relevant configuration files based on the detected framework:
   - `CFBundleIdentifier`
 - For Expo: check these in `app.json` → `expo.name`, `expo.version`, `expo.ios.buildNumber`, `expo.ios.bundleIdentifier`
 - For Flutter: check `pubspec.yaml` → `name`, `version` and `ios/Runner/Info.plist`
+- **(2.3.1a)** Scan for hidden/dormant feature flags or remote config toggles (Firebase Remote Config, LaunchDarkly, `featureFlag`, `killSwitch`, `isHidden`) that could enable undocumented features
+- **(2.3.7)** Verify app display name is at most 30 characters (`CFBundleDisplayName` / `expo.name`)
+- **(2.3.10)** Scan code, strings, and asset filenames for references to "Android", "Google Play", "Play Store", "Windows Phone", or other mobile platform names/icons
+- **(2.3.12)** If a changelog/release notes file exists (`CHANGELOG.md`, `fastlane/metadata/*/release_notes.txt`), verify it is not empty or purely generic
 
 - Check that all usage description strings exist for used frameworks/permissions:
   - `NSCameraUsageDescription`
@@ -217,6 +227,9 @@ Find the iOS-relevant configuration files based on the detected framework:
   - Flutter: hardcoded `width`/`height` instead of `MediaQuery`
   - RN/Expo: hardcoded dimensions instead of `Dimensions` API / responsive layouts
   - Native: hardcoded CGRect/frame values
+- **(2.4.2)** Scan for cryptocurrency mining libraries/code executing on-device (`coinhive`, `cryptonight`, `xmrig`, mining pool URLs). Check for unrelated background processing (e.g., `BGProcessingTaskRequest` doing non-app work)
+- **(2.4.4)** Scan user-facing strings for instructions to restart device, turn off Wi-Fi, disable security features, or change unrelated system settings
+- **(2.4.5)** If project targets macOS: verify sandbox entitlements (`com.apple.security.app-sandbox`), no third-party installer code, no auto-launch at login without consent, no license key screens, localization bundled in app
 
 **2.5 Software Requirements:**
 - Check for private/undocumented API usage (primarily in native code layer)
@@ -224,6 +237,18 @@ Find the iOS-relevant configuration files based on the detected framework:
 - Check for deprecated API usage
 - Verify IPv6 compatibility — no hardcoded IPv4 addresses anywhere in the project
 - If it's a browser/webview app, check for WebKit compliance (Guideline 2.5.6)
+- **(2.5.2)** Scan for dynamic code loading: `dlopen`, `NSBundle.load`, `JavaScriptCore` eval of remote scripts, hot-patching SDKs (JSPatch, Rollout.io, CodePush with native code changes), `eval()` with network-fetched content
+- **(2.5.4)** Read `UIBackgroundModes` from Info.plist and cross-check each declared mode (`audio`, `location`, `voip`, `fetch`, `remote-notification`, `processing`) against actual code usage. Flag declared modes with no corresponding implementation
+- **(2.5.8)** Scan for launcher/home screen replacement patterns or custom springboard-like UIs
+- **(2.5.9)** Scan for code that overrides volume button behavior, intercepts system gestures, or blocks standard link-out behavior (overriding `openURL`)
+- **(2.5.11)** If app declares `INIntent` types or has `Intents.intentdefinition`, verify intents match app functionality. Check `AppShortcutsProvider` vocabulary relates to app's domain
+- **(2.5.12)** If `CallKit` or `IdentityLookup` frameworks are imported, verify blocking/spam criteria is documented. Check for `CXCallDirectoryProvider` or `ILMessageFilterExtension` targets
+- **(2.5.13)** If app uses facial recognition for auth (ARKit face tracking, Vision framework), verify it uses `LocalAuthentication` (Face ID) instead. Check for age-gating under 13
+- **(2.5.14)** If app records screen/camera/microphone, verify visible recording indicator in UI. Check for `ReplayKit` usage without user-visible indicators
+- **(2.5.15)** If app has file-picking, verify it uses `UIDocumentPickerViewController` or `PHPickerViewController` (includes Files/iCloud), not a custom browser excluding iCloud
+- **(2.5.16)** If app has widget extensions, verify widgets display content related to the main app, not ads. Check widget extension code for ad SDK imports
+- **(2.5.17)** If app uses Matter (`MatterSupport`, `MatterAddDeviceExtensionRequestHandler`), verify it uses Apple's Matter framework for pairing
+- **(2.5.18)** Scan extension targets (widgets, keyboards, App Clips, watchOS, notification extensions) for ad SDK imports (`GoogleMobileAds`, `FBAudienceNetwork`, `AdSupport`). Flag ad code in non-main-app targets. Verify main app has ad-reporting mechanism if ads are present
 
 ### Step 4: Business Checks (Section 3)
 
@@ -237,7 +262,9 @@ Find the iOS-relevant configuration files based on the detected framework:
   - Custom payment forms for unlocking features (violation!)
   - Crypto payments for digital features (violation!)
   - Note: physical goods/services CAN use external payment
-- Verify loot box/randomized purchase odds disclosure if applicable
+- **(3.1.1)** If app sells digital gift cards/vouchers/coupons redeemable for digital content, verify they use IAP (not Stripe/PayPal). Scan for "gift card", "voucher", "coupon" + external payment
+- **(3.1.1)** If app references NFTs (`NFT`, `ERC-721`, `ERC-1155`, OpenSea, Alchemy NFT API), verify NFT ownership does NOT gate features/functionality. Look for conditional logic tying token ownership to feature access
+- Verify loot box/randomized purchase odds disclosure if applicable — scan for randomized reward code and verify probability/odds display exists in the UI flow
 
 **3.1.2 Subscriptions & Restore Purchases (Common Rejection):**
 - If app has IAP or subscriptions, verify a **"Restore Purchases"** button exists:
@@ -250,13 +277,33 @@ Find the iOS-relevant configuration files based on the detected framework:
   - Clear display of subscription terms (price, duration, renewal period) BEFORE purchase
   - Free trial terms clearly stated if offered (e.g., "3-day free trial, then $9.99/month")
 - Check that subscription paywall does NOT block access before showing terms
+- **(3.1.2a)** Verify subscription periods are at least 7 days. Check StoreKit config files or subscription period constants
+- **(3.1.2b)** If multiple subscription tiers exist, verify upgrade/downgrade handling code exists (`SKPaymentQueue` subscription change or StoreKit 2 `Product.SubscriptionInfo`)
+- **(3.1.2c)** Verify subscription terms (price, period, renewal, cancellation) are displayed BEFORE purchase button in the paywall UI
+
+**3.1.3 Other Purchase Methods:**
+- **(3.1.3a)** If app is a reader app (magazines, newspapers, books, audio, music, video) accessing previously purchased content without IAP, verify it does not include IAP prompts for that content. Check for External Link Account Entitlement if linking externally
+- **(3.1.4)** If app unlocks features based on connected hardware (BLE accessories, IoT), verify it does not require purchase of unrelated products. Scan `CBCentralManager` / `EAAccessoryManager` usage tied to feature gating
+
+**3.1.5 Cryptocurrencies:**
+- If app is a crypto wallet (check for `web3swift`, `ethers`, `WalletConnect`, `solana-swift`), flag that developer must be enrolled as an organization
+- Scan for on-device crypto mining code/libraries/algorithms — instant rejection (Guideline 3.1.5ii)
+- If app facilitates crypto exchange/trading, flag licensing requirement and geo-restriction need (Guideline 3.1.5iii)
+- **(3.1.5v)** Scan for reward/earn patterns combined with crypto: "earn tokens", "download to earn", "share to earn" with cryptocurrency references
 
 **3.2 Other Business Model Issues:**
 - Check for forced review prompts:
   - Native: `SKStoreReviewController`
   - Flutter: `in_app_review`
   - RN/Expo: `react-native-in-app-review`, `expo-store-review`
+- **(5.6.1)** Scan for custom review prompt UI (custom dialogs with star ratings) instead of system `SKStoreReviewController.requestReview()`. Flag custom "Rate this app" alerts that bypass the system API
 - Look for incentivized review patterns
+- **(3.2.1v)** If app is in the insurance domain, verify no IAP products are defined and app is free
+- **(3.2.1viii)** If app contains trading/investing functionality (brokerage APIs, stock tickers, order placement), flag that it must be submitted by a licensed financial institution
+- **(3.2.2i)** Scan for store-like interfaces displaying/installing third-party apps. Look for "install" buttons for external apps, `itms-services://` protocol usage
+- **(3.2.2iii)** Scan for code that artificially loads/clicks ads in hidden views, or apps predominantly showing ads with minimal functionality
+- **(3.2.2viii)** Scan for binary options trading terminology ("binary options", "call/put"). If CFD/FOREX trading, flag licensing requirement
+- **(3.2.2ix)** If app offers personal loans (search for "loan", "APR", "borrow", "lending", "repayment"), verify APR disclosure exists, max APR ≤ 36%, repayment period > 60 days
 
 ### Step 5: Design Checks (Section 4)
 
@@ -271,6 +318,11 @@ Find the iOS-relevant configuration files based on the detected framework:
   - Native: single `WKWebView` loading one URL
   - Cordova/Ionic/Capacitor: check if there's meaningful native functionality beyond the web shell
 - Check for actual native functionality beyond web content
+- **(4.2.1)** If app uses ARKit (`ARSession`, `ARView`, `ARSCNView`), verify it provides a rich AR experience beyond just placing a single model
+- **(4.2.3i)** Scan for hard dependencies on other apps (e.g., `canOpenURL` checks that gate core functionality, mandatory companion app checks at launch)
+- **(4.2.3ii)** If app downloads large resources on first launch (`URLSession` downloads at startup, on-demand resources), verify size disclosure and user prompt before download
+- **(4.2.6)** Scan for known template/app-generation service markers (BuildFire, Appy Pie, GoodBarber, Shoutem boilerplate in code/config)
+- **(4.2.7)** If app uses screen mirroring or remote desktop (VNC libraries, `RPScreenRecorder` for mirroring), verify it only connects to user-owned devices on LAN. Flag cloud-based thin client patterns
 
 **4.3 Spam:**
 - Verify single bundle ID per app concept
@@ -282,6 +334,8 @@ Find the iOS-relevant configuration files based on the detected framework:
   - Keyboard extensions don't launch other apps besides Settings
   - Safari extensions run on current Safari version and don't interfere with system UI
   - App Clips don't contain advertising (Guideline 2.5.16a)
+- **(4.4.1)** If keyboard extension exists, verify `advanceToNextInputMode()` is called from a button in the keyboard UI
+- **(4.4.2)** If Safari extension exists, check `SFSafariWebsiteAccess` in extension's Info.plist — verify it does not claim `All Websites` when only specific domains are needed
 - Check for extension targets:
   - Native: look for extension targets in `.xcodeproj`
   - Flutter: check `ios/` for extension targets
@@ -293,13 +347,21 @@ Find the iOS-relevant configuration files based on the detected framework:
   - Users initiate playback, standard media controls available
   - No payment required for Apple Music access
   - Follows Apple Music Identity Guidelines
+  - **(4.5.2ii)** Does not download/save/share music files from MusicKit APIs. Flag file-saving on MusicKit-sourced content
+  - **(4.5.2iii)** If accessing Apple Music user data (playlists, favorites), verify purpose string is provided and data is not sent to ad/tracking SDKs
+- **(4.5.3)** Scan for bulk Push Notification patterns, Game Center spam, or harvesting of Game Center Player IDs for non-game purposes
 - Verify Push Notifications are not required for core functionality (Guideline 4.5.4)
 - Verify Push Notifications are not used for marketing without explicit opt-in
+- **(4.5.5)** If app uses GameKit/Game Center, verify Player IDs (`GKPlayer.gamePlayerID`, `GKPlayer.teamPlayerID`) are not displayed in UI or sent to third parties
 - Check app does not use Apple emoji embedded in binary or on other platforms (Guideline 4.5.6)
 
 **4.7 Mini Apps / Emulators:**
 - Check for code execution capabilities (JavaScript injection, eval patterns)
 - If present, verify proper content filtering
+- **(4.7.2)** If app hosts mini-apps via WebView/JS bridge, verify native APIs (camera, contacts, location) are NOT exposed to embedded web content without Apple permission. Scan `WKScriptMessageHandler` or JS bridge patterns
+- **(4.7.3)** If app hosts mini-apps/plugins, verify each requests explicit user consent before accessing shared data/permissions. Flag blanket permission grants to embedded content
+- **(4.7.4)** If app hosts mini-apps/streaming games/plugins, verify an index/catalog exists with universal links. Check for `apple-app-site-association` file
+- **(4.7.5)** If app hosts mini-apps/games, verify age-gating mechanism exists for content exceeding the app's age rating
 
 **4.8 Login Services (CRITICAL — Common Rejection):**
 - Detect third-party login SDKs:
@@ -344,6 +406,13 @@ Find the iOS-relevant configuration files based on the detected framework:
   - Active keyboard APIs
   - User defaults APIs
 - Look for third-party SDKs that need their own privacy manifests
+- **(5.1.1i)** Verify app includes a privacy policy link — search for "privacy policy", "privacyPolicy" URL in code, config, and settings screens
+- **(5.1.1ii)** Verify paid features are NOT conditional on granting data access permissions. Scan for permission-denial handlers that block premium content
+- **(5.1.1iii)** Verify app uses out-of-process pickers where possible: `PHPickerViewController` instead of full `PHPhotoLibrary` access, `CNContactPickerViewController` instead of full Contacts. Flag full-access requests when picker alternatives exist
+- **(5.1.1iv)** Verify fallback behavior when permissions are denied (e.g., manual address entry when location is denied). Flag code that blocks the user entirely on permission denial
+- **(5.1.1vii)** If app uses `SFSafariViewController`, verify it is NOT hidden or obscured (not added as zero-frame subview). Search for hidden SafariVC instantiation patterns
+- **(5.1.1viii)** Scan for scraping patterns, public database API calls, or data aggregation from external sources that compile personal info without direct user input. Flag web scraping libraries or people-search API integrations
+- **(5.1.1ix)** If app is in banking, healthcare, gambling, cannabis, air travel, or crypto exchange domains, flag that it must be submitted by a legal entity (not individual developer)
 
 **5.1.1(v) Account Deletion (CRITICAL — Common Rejection):**
 - If app has account creation/sign-up, it MUST have account deletion
@@ -363,6 +432,12 @@ Find the iOS-relevant configuration files based on the detected framework:
   - `AppTrackingTransparency` framework is used
   - `NSUserTrackingUsageDescription` is in Info.plist
   - ATT prompt is shown before tracking begins
+- **(5.1.2ii)** Verify data collected for one purpose is not repurposed. Cross-check data collection SDKs with data sharing destinations
+- **(5.1.2iii)** Scan for device fingerprinting patterns: aggregating `UIDevice` properties (model + OS + screen + timezone + language) into a single identifier
+- **(5.1.2iv)** If app accesses Contacts or Photos, verify data is NOT uploaded in bulk to a server. Flag bulk-upload patterns after Contacts/Photos access
+- **(5.1.2v)** If app sends messages via contacts, verify no "Select All" contacts option exists. Verify message preview is shown before sending
+- **(5.1.2vi)** If app uses HomeKit (`HMHomeManager`), ClassKit (`CLSDataStore`), or ARKit facial/depth mapping, verify this data is NOT sent to ad/marketing SDKs
+- **(5.1.2vii)** If app uses Apple Pay, verify `PKPayment` data is NOT shared with third parties beyond delivery facilitation
 
 **5.1.3 Health and Health Research:**
 - If app collects health/fitness/medical data (HealthKit, Clinical Health Records, Motion & Fitness):
@@ -397,7 +472,9 @@ Find the iOS-relevant configuration files based on the detected framework:
 - Check for potentially copyrighted assets
 - Look for hardcoded references to other brands/trademarks
 - Verify app does not use third-party content (audio, video, images) without proper licensing
-- Check for references to Apple trademarks used incorrectly (Guideline 5.2.5)
+- **(5.2.3)** Scan for YouTube/SoundCloud/Vimeo download functionality: `ytdl-core`, media download+save from third-party streaming. Flag `AVAssetExportSession` or file-saving on streamed third-party media
+- **(5.2.5)** Scan for Apple emoji embedded in app binary (PNG/SVG assets). Check for UI mimicking Finder, App Store, Messages. Check Activity ring visualizations that resemble system Activity rings without following HIG
+- Check for references to Apple trademarks used incorrectly
 
 **5.3 Gaming, Gambling, and Lotteries:**
 - If app involves real-money gaming, betting, poker, casino, horse racing, or lotteries:
@@ -436,6 +513,7 @@ Find the iOS-relevant configuration files based on the detected framework:
   - Forced ratings or reviews (Guideline 3.2.2(x))
   - Fake urgency or scarcity tactics in UI strings
 - Verify app does not contain scam or bait-and-switch patterns
+- **(5.6.3)** Scan for code that manipulates reviews/ratings/chart rankings: automated review submission, bot-like behavior, review-farming service integrations
 - Check for review manipulation code (fake reviews, incentivized reviews)
 
 ### Step 7: Common Rejection Reasons Quick-Check
@@ -498,10 +576,14 @@ Not strict violations but recommended improvements.
 ## Checklist Summary
 - [ ] Project type & framework detected
 - [ ] Info.plist / app.json metadata complete
+- [ ] App display name ≤ 30 characters (Guideline 2.3.7)
+- [ ] No references to other mobile platforms in code/assets (Guideline 2.3.10)
 - [ ] All NS*UsageDescription keys present for used permissions
 - [ ] No hardcoded secrets or API keys in source
 - [ ] App Transport Security properly configured
 - [ ] Privacy manifest (PrivacyInfo.xcprivacy) present and complete
+- [ ] Privacy policy URL referenced in app (Guideline 5.1.1i)
+- [ ] Data minimization — use pickers over full access where possible (Guideline 5.1.1iii)
 - [ ] Sign in with Apple implemented (if third-party login exists)
 - [ ] Account deletion available (if account creation exists)
 - [ ] In-App Purchase used for digital goods (no external payment for digital content)
@@ -510,7 +592,9 @@ Not strict violations but recommended improvements.
 - [ ] No debug/test code in production paths
 - [ ] No placeholder or TODO content in UI
 - [ ] No "beta" / "trial" / "demo" labels in production app
-- [ ] Privacy policy URL referenced in app
+- [ ] No dynamic code loading / hot-patching (Guideline 2.5.2)
+- [ ] Background modes declared only for modes actually used (Guideline 2.5.4)
+- [ ] No ads in extensions/widgets/App Clips (Guideline 2.5.18)
 - [ ] App Tracking Transparency implemented (if tracking/ad SDKs present)
 - [ ] UGC moderation in place (if user-generated content exists)
 - [ ] Developer contact / support URL accessible in-app
@@ -521,7 +605,9 @@ Not strict violations but recommended improvements.
 - [ ] Kids privacy compliance (if app targets children)
 - [ ] Gambling/lottery properly licensed and geo-restricted (if applicable)
 - [ ] VPN uses NEVPNManager and org account (if applicable)
+- [ ] No on-device crypto mining (Guideline 3.1.5ii)
 - [ ] No dark patterns or manipulative UI in purchase flows
+- [ ] No illegal media downloading from third-party services (Guideline 5.2.3)
 
 ## Final Verdict
 READY / NEEDS FIXES / HIGH RISK — with summary
