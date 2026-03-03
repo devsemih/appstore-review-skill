@@ -76,11 +76,14 @@ That's it. The skill will scan your project and output a structured compliance r
 - Objectionable content in strings and resources
 - User-generated content moderation (filtering, reporting, blocking)
 - Kids Category compliance (no third-party analytics/ads)
-- Medical app disclaimers
+- Medical app disclaimers and physical harm checks
+- Developer contact / support URL accessibility
 - Data security (ATS, hardcoded secrets, secure storage)
+- Criminal activity reporting app restrictions
 
 ### Section 2 — Performance
 - App completeness (TODOs, placeholders, debug code, staging URLs)
+- Beta / trial / demo labels in production app (must use TestFlight)
 - Info.plist / app.json required keys and usage descriptions
 - iPad support and adaptive layout
 - Private API usage, IPv6 compatibility
@@ -97,14 +100,25 @@ That's it. The skill will scan your project and output a structured compliance r
 - Minimum functionality (web wrapper detection)
 - **Sign in with Apple** — required when any third-party login exists
 - Bundle ID uniqueness
+- Extension compliance (keyboard, Safari, widgets, App Clips)
+- Apple Sites and Services (Push Notification abuse, Apple Music rules)
+- Apple Pay branding and recurring payment disclosures
+- No monetization of built-in OS/hardware capabilities
 
 ### Section 5 — Privacy & Legal
 - `PrivacyInfo.xcprivacy` existence and completeness
 - Required API reason declarations
 - **Account deletion** — required when account creation exists
 - App Tracking Transparency for ad/analytics SDKs
+- Health data protection (no ads/marketing use of HealthKit data)
+- Kids privacy (COPPA, GDPR children's provisions)
 - Location services justification
 - Hardcoded credentials and `.env` file exposure
+- Intellectual property and third-party content usage
+- Gaming, gambling, and lottery compliance
+- VPN app requirements (NEVPNManager API)
+- Mobile Device Management (MDM) restrictions
+- Developer Code of Conduct (dark patterns, scam detection)
 
 ### Quick-Check — Top 10 Rejection Reasons
 1. Crashes / risky code patterns
@@ -218,7 +232,7 @@ Based on Apple's [App Store Review Guidelines](https://developer.apple.com/app-s
 | 2. Performance | 2.1 — 2.5 |
 | 3. Business | 3.1 — 3.2 |
 | 4. Design | 4.1 — 4.10 |
-| 5. Legal | 5.1 — 5.2 |
+| 5. Legal | 5.1 — 5.6 |
 
 ## Guidelines Version
 

@@ -142,6 +142,14 @@ Find the iOS-relevant configuration files based on the detected framework:
   - RN/Expo: `react-native-health`, `expo-health`
   - Native: `HealthKit`
 - Verify medical disclaimers exist if applicable
+- Check drug dosage calculators come from approved entities (Guideline 1.4.2)
+- Check app does not encourage tobacco, vape, illegal drugs, or excessive alcohol (Guideline 1.4.3)
+
+**1.5 Developer Information:**
+- Verify app includes accessible contact information / support URL
+- Check for a support link or contact method in the app UI (not just App Store metadata)
+- For Expo: check `expo.ios.supportsTablet`, support URL in `app.json`
+- For all: search for "support", "contact", "help" screens or links in code
 
 **1.6 Data Security:**
 - Check for `NSAppTransportSecurity` exceptions in Info.plist
@@ -156,10 +164,16 @@ Find the iOS-relevant configuration files based on the detected framework:
   - RN: `react-native-keychain` / `expo-secure-store` vs `AsyncStorage` for sensitive data
   - Native: Keychain vs `UserDefaults` for sensitive data
 
+**1.7 Reporting Criminal Activity:**
+- If app has crime reporting features, verify it involves local law enforcement
+- Check app is geo-restricted to regions where such law enforcement involvement is active
+
 ### Step 3: Performance Checks (Section 2)
 
-**2.1 App Completeness:**
-- Check for TODO/FIXME/HACK comments indicating incomplete features
+**2.1 App Completeness (includes 2.2 Beta Testing):**
+- Verify app is not labeled as "beta", "trial", or "demo" in code/UI/config (Guideline 2.2 — use TestFlight for betas)
+- Search for "beta", "trial", "demo version" in user-facing strings and app name
+- Check for TODO/FIXME/HACK comments indicating incomplete features (Guideline 2.1)
 - Look for placeholder text in UI:
   - Flutter: `Text('TODO')`, `Text('Lorem ipsum')` in widget files
   - RN/Expo: placeholder text in JSX components
@@ -261,6 +275,28 @@ Find the iOS-relevant configuration files based on the detected framework:
 **4.3 Spam:**
 - Verify single bundle ID per app concept
 
+**4.4 Extensions:**
+- If app includes extensions (keyboard, Safari, widgets, App Clips), verify:
+  - Extensions include some functionality (help screens, settings)
+  - Keyboard extensions provide keyboard input, remain functional without full network access
+  - Keyboard extensions don't launch other apps besides Settings
+  - Safari extensions run on current Safari version and don't interfere with system UI
+  - App Clips don't contain advertising (Guideline 2.5.16a)
+- Check for extension targets:
+  - Native: look for extension targets in `.xcodeproj`
+  - Flutter: check `ios/` for extension targets
+  - RN/Expo: check `ios/` for widget/keyboard/Safari extension targets
+
+**4.5 Apple Sites and Services:**
+- Verify app does not scrape Apple websites (apple.com, App Store, iTunes)
+- If app uses Apple Music (MusicKit), verify:
+  - Users initiate playback, standard media controls available
+  - No payment required for Apple Music access
+  - Follows Apple Music Identity Guidelines
+- Verify Push Notifications are not required for core functionality (Guideline 4.5.4)
+- Verify Push Notifications are not used for marketing without explicit opt-in
+- Check app does not use Apple emoji embedded in binary or on other platforms (Guideline 4.5.6)
+
 **4.7 Mini Apps / Emulators:**
 - Check for code execution capabilities (JavaScript injection, eval patterns)
 - If present, verify proper content filtering
@@ -274,6 +310,22 @@ Find the iOS-relevant configuration files based on the detected framework:
 - **If ANY third-party login exists, verify Sign in with Apple is also implemented**
 - Check for `AuthenticationServices` framework or equivalent wrapper
 - Exceptions: company-only login, education/enterprise SSO, government ID
+
+**4.9 Apple Pay:**
+- If app uses Apple Pay, verify:
+  - All material purchase information is provided before sale
+  - Apple Pay branding/UI used correctly
+  - For recurring payments: renewal term, what's provided, actual charges, how to cancel — all disclosed
+- Check for Apple Pay integration:
+  - Native: `PassKit`, `PKPaymentAuthorizationViewController`
+  - Flutter: `pay` package
+  - RN/Expo: `@stripe/stripe-react-native` with Apple Pay, `react-native-payments`
+
+**4.10 Monetizing Built-In Capabilities:**
+- Verify app does not charge for built-in OS/hardware capabilities:
+  - Push Notifications, camera, gyroscope, etc.
+  - Apple services: Apple Music access, iCloud storage, Screen Time APIs
+- Search for paywalls or IAP gates around native device features
 
 ### Step 6: Privacy & Legal Checks (Section 5)
 
@@ -312,6 +364,28 @@ Find the iOS-relevant configuration files based on the detected framework:
   - `NSUserTrackingUsageDescription` is in Info.plist
   - ATT prompt is shown before tracking begins
 
+**5.1.3 Health and Health Research:**
+- If app collects health/fitness/medical data (HealthKit, Clinical Health Records, Motion & Fitness):
+  - Verify data is NOT used for advertising, marketing, or data mining
+  - Verify data is NOT shared with third parties except for health management improvement
+  - Verify app does not write false data into HealthKit
+  - Verify personal health info is NOT stored in iCloud
+- If app conducts health-related research:
+  - Verify consent flow exists (nature, purpose, duration, risks, benefits, confidentiality, contact, withdrawal)
+  - Verify independent ethics review board approval (note as "Manual Check Required")
+- Check for health-related packages:
+  - Flutter: `health`, `flutter_health_connect`
+  - RN/Expo: `react-native-health`, `expo-health`, `@react-native-community/health`
+  - Native: `HealthKit`, `CareKit`, `ResearchKit`
+
+**5.1.4 Kids:**
+- If app targets children or collects data from minors:
+  - Verify compliance with COPPA, GDPR (children's provisions), and other child privacy laws
+  - Apps intended primarily for kids should not include third-party analytics or advertising (see also 1.3)
+  - Verify parental gate implementation if in Kids Category
+  - Check app does not use "For Kids" or "For Children" in metadata unless in Kids Category (Guideline 2.3.8)
+  - Verify no collection/transmission of personal info from minors without parental consent
+
 **5.1.5 Location Services:**
 - If location is used, verify purpose strings are descriptive
 - Check for background location and proper justification:
@@ -322,6 +396,47 @@ Find the iOS-relevant configuration files based on the detected framework:
 **5.2 Intellectual Property:**
 - Check for potentially copyrighted assets
 - Look for hardcoded references to other brands/trademarks
+- Verify app does not use third-party content (audio, video, images) without proper licensing
+- Check for references to Apple trademarks used incorrectly (Guideline 5.2.5)
+
+**5.3 Gaming, Gambling, and Lotteries:**
+- If app involves real-money gaming, betting, poker, casino, horse racing, or lotteries:
+  - Verify appropriate licensing exists (note as "Manual Check Required")
+  - Verify app is geo-restricted to licensed jurisdictions
+  - Verify app is free on the App Store (Guideline 5.3.4)
+  - Verify app does NOT use IAP for real-money gambling credits (Guideline 5.3.3)
+- Check for gambling-related packages/patterns:
+  - Payment flows connected to game outcomes
+  - "Bet", "wager", "casino", "poker", "lottery", "sweepstakes" in code/strings
+- If app has sweepstakes/contests, verify official rules are presented in-app and state Apple is not a sponsor (Guideline 5.3.1, 5.3.2)
+
+**5.4 VPN Apps:**
+- If app provides VPN services:
+  - Verify it uses `NEVPNManager` API (Guideline 5.4)
+  - Verify developer is enrolled as an organization (not individual)
+  - Verify clear data collection disclosure is shown before purchase/use
+  - Verify privacy policy commits to not selling/sharing data with third parties
+  - If available in territories requiring VPN license, verify license info in App Review Notes
+- Check for VPN-related packages:
+  - Native: `NetworkExtension`, `NEVPNManager`, `NETunnelProviderManager`
+  - Flutter: `flutter_vpn`, `wireguard_flutter`
+  - RN: `react-native-vpn`
+
+**5.5 Mobile Device Management (MDM):**
+- If app offers MDM services:
+  - Verify it is offered by a commercial enterprise, educational institution, or government agency
+  - Verify clear data collection disclosure before purchase/use
+  - Verify privacy policy commits to not selling/sharing data
+  - Verify app does not collect/transmit data beyond MDM app performance (no user/device profiling)
+- Check for MDM-related entitlements and profiles in the project
+
+**5.6 Developer Code of Conduct:**
+- Check for patterns that manipulate users:
+  - Dark patterns in subscription/purchase flows (e.g., hidden cancel buttons, misleading "free trial" that auto-charges)
+  - Forced ratings or reviews (Guideline 3.2.2(x))
+  - Fake urgency or scarcity tactics in UI strings
+- Verify app does not contain scam or bait-and-switch patterns
+- Check for review manipulation code (fake reviews, incentivized reviews)
 
 ### Step 7: Common Rejection Reasons Quick-Check
 
@@ -394,9 +509,19 @@ Not strict violations but recommended improvements.
 - [ ] Subscription terms clearly displayed before purchase
 - [ ] No debug/test code in production paths
 - [ ] No placeholder or TODO content in UI
+- [ ] No "beta" / "trial" / "demo" labels in production app
 - [ ] Privacy policy URL referenced in app
 - [ ] App Tracking Transparency implemented (if tracking/ad SDKs present)
 - [ ] UGC moderation in place (if user-generated content exists)
+- [ ] Developer contact / support URL accessible in-app
+- [ ] Extensions comply with extension guidelines (if applicable)
+- [ ] Apple Pay branding and disclosures correct (if applicable)
+- [ ] No monetization of built-in OS capabilities
+- [ ] Health data not used for ads/marketing (if HealthKit used)
+- [ ] Kids privacy compliance (if app targets children)
+- [ ] Gambling/lottery properly licensed and geo-restricted (if applicable)
+- [ ] VPN uses NEVPNManager and org account (if applicable)
+- [ ] No dark patterns or manipulative UI in purchase flows
 
 ## Final Verdict
 READY / NEEDS FIXES / HIGH RISK — with summary
