@@ -109,8 +109,9 @@ Find the iOS-relevant configuration files based on the detected framework:
 
 ### Step 2: Safety Checks (Section 1)
 
-**1.1 Objectionable Content:**
+**1.1 Objectionable Content (1.1.1–1.1.7):**
 - Scan for hardcoded offensive strings, slurs, or inappropriate content in code/resources
+- Specifically scan for: **(1.1.1)** defamatory, discriminatory, or mean-spirited content targeting religion, race, sexual orientation, gender, ethnicity; **(1.1.2)** realistic portrayals of violence, killing, torture; **(1.1.3)** depictions encouraging illegal weapon use or facilitating firearm purchases; **(1.1.4)** overtly sexual or pornographic material; **(1.1.5)** inflammatory religious commentary
 - Check user-facing strings:
   - Native: `Localizable.strings`, String Catalogs (`.xcstrings`)
   - Flutter: `lib/l10n/`, `*.arb` files
@@ -144,7 +145,7 @@ Find the iOS-relevant configuration files based on the detected framework:
   - Flutter: `health`, `flutter_health_connect`
   - RN/Expo: `react-native-health`, `expo-health`
   - Native: `HealthKit`
-- Verify medical disclaimers exist if applicable
+- **(1.4.1)** Verify medical disclaimers exist if applicable. Medical apps providing data/information must disclose methodology; apps claiming to measure blood pressure, blood glucose, etc. using only device sensors are not permitted
 - Check drug dosage calculators come from approved entities (Guideline 1.4.2)
 - Check app does not encourage tobacco, vape, illegal drugs, or excessive alcohol (Guideline 1.4.3)
 - **(1.4.4)** If app displays DUI checkpoint data, verify it uses only law-enforcement-published sources
@@ -222,7 +223,7 @@ Find the iOS-relevant configuration files based on the detected framework:
 
 **2.4 Hardware Compatibility:**
 - Check `UIRequiredDeviceCapabilities` in Info.plist
-- Verify iPad support (`UIDeviceFamily`)
+- **(2.4.1)** Verify iPad support (`UIDeviceFamily`) — iPhone apps should run on iPad whenever possible
 - Look for hardcoded screen sizes:
   - Flutter: hardcoded `width`/`height` instead of `MediaQuery`
   - RN/Expo: hardcoded dimensions instead of `Dimensions` API / responsive layouts
@@ -235,8 +236,9 @@ Find the iOS-relevant configuration files based on the detected framework:
 - Check for private/undocumented API usage (primarily in native code layer)
 - Verify minimum deployment target
 - Check for deprecated API usage
-- Verify IPv6 compatibility — no hardcoded IPv4 addresses anywhere in the project
+- **(2.5.5)** Verify IPv6 compatibility — no hardcoded IPv4 addresses anywhere in the project. Apps must be fully functional on IPv6-only networks
 - If it's a browser/webview app, check for WebKit compliance (Guideline 2.5.6)
+- **(2.5.3)** Scan for code/libraries that could transmit viruses or disrupt normal OS/hardware operation. Flag known malicious patterns, suspicious network payloads, or code that modifies system files
 - **(2.5.2)** Scan for dynamic code loading: `dlopen`, `NSBundle.load`, `JavaScriptCore` eval of remote scripts, hot-patching SDKs (JSPatch, Rollout.io, CodePush with native code changes), `eval()` with network-fetched content
 - **(2.5.4)** Read `UIBackgroundModes` from Info.plist and cross-check each declared mode (`audio`, `location`, `voip`, `fetch`, `remote-notification`, `processing`) against actual code usage. Flag declared modes with no corresponding implementation
 - **(2.5.8)** Scan for launcher/home screen replacement patterns or custom springboard-like UIs
@@ -261,7 +263,7 @@ Find the iOS-relevant configuration files based on the detected framework:
   - Stripe, PayPal, Braintree SDK for in-app digital content (violation!)
   - Custom payment forms for unlocking features (violation!)
   - Crypto payments for digital features (violation!)
-  - Note: physical goods/services CAN use external payment
+  - **(3.1.3e)** Note: physical goods/services consumed outside the app MUST use external payment (not IAP)
 - **(3.1.1)** If app sells digital gift cards/vouchers/coupons redeemable for digital content, verify they use IAP (not Stripe/PayPal). Scan for "gift card", "voucher", "coupon" + external payment
 - **(3.1.1)** If app references NFTs (`NFT`, `ERC-721`, `ERC-1155`, OpenSea, Alchemy NFT API), verify NFT ownership does NOT gate features/functionality. Look for conditional logic tying token ownership to feature access
 - Verify loot box/randomized purchase odds disclosure if applicable — scan for randomized reward code and verify probability/odds display exists in the UI flow
@@ -311,7 +313,8 @@ Find the iOS-relevant configuration files based on the detected framework:
 - Check bundle identifier and app name for potential trademark issues
 - Look for references to competing app names in code/resources
 
-**4.2 Minimum Functionality:**
+**4.2 Minimum Functionality (4.2.1–4.2.7):**
+- **(4.2.2)** Verify app is not primarily marketing materials, advertisements, web clippings, content aggregators, or a collection of links. Must provide genuine utility or entertainment
 - Assess if the app is just a wrapper around a website:
   - Flutter: single `WebView` widget loading one URL
   - RN/Expo: single `WebView` component loading one URL
@@ -342,7 +345,7 @@ Find the iOS-relevant configuration files based on the detected framework:
   - RN/Expo: check `ios/` for widget/keyboard/Safari extension targets
 
 **4.5 Apple Sites and Services:**
-- Verify app does not scrape Apple websites (apple.com, App Store, iTunes)
+- **(4.5.1)** Verify app does not scrape Apple websites (apple.com, App Store, iTunes) or create rankings using Apple data. May use approved Apple RSS feeds
 - If app uses Apple Music (MusicKit), verify:
   - Users initiate playback, standard media controls available
   - No payment required for Apple Music access
@@ -355,8 +358,9 @@ Find the iOS-relevant configuration files based on the detected framework:
 - **(4.5.5)** If app uses GameKit/Game Center, verify Player IDs (`GKPlayer.gamePlayerID`, `GKPlayer.teamPlayerID`) are not displayed in UI or sent to third parties
 - Check app does not use Apple emoji embedded in binary or on other platforms (Guideline 4.5.6)
 
-**4.7 Mini Apps / Emulators:**
+**4.7 Mini Apps / Emulators (4.7.1–4.7.5):**
 - Check for code execution capabilities (JavaScript injection, eval patterns)
+- **(4.7.1)** If app hosts mini-apps/plugins/streaming games, verify they: follow all privacy guidelines (5.1), include content moderation (filtering, reporting, blocking), and use IAP for digital goods (3.1)
 - If present, verify proper content filtering
 - **(4.7.2)** If app hosts mini-apps via WebView/JS bridge, verify native APIs (camera, contacts, location) are NOT exposed to embedded web content without Apple permission. Scan `WKScriptMessageHandler` or JS bridge patterns
 - **(4.7.3)** If app hosts mini-apps/plugins, verify each requests explicit user consent before accessing shared data/permissions. Flag blanket permission grants to embedded content
@@ -468,9 +472,11 @@ Find the iOS-relevant configuration files based on the detected framework:
   - RN/Expo: `expo-location`, `react-native-geolocation-service`, `@react-native-community/geolocation`
   - Native: `CoreLocation`
 
-**5.2 Intellectual Property:**
-- Check for potentially copyrighted assets
+**5.2 Intellectual Property (5.2.1–5.2.5):**
+- **(5.2.1)** Check for potentially copyrighted assets — don't use protected third-party trademarks, copyrighted works, or patented ideas without permission
+- **(5.2.2)** If app uses/accesses third-party services, verify compliance with their terms of use (e.g., check for YouTube API, Spotify API, Google Maps usage and whether TOS allows the app's use case)
 - Look for hardcoded references to other brands/trademarks
+- **(5.2.4)** Scan for text/UI that suggests or implies Apple endorses the app or is the source/supplier. Search for "Apple recommended", "Apple approved", "endorsed by Apple" in strings
 - Verify app does not use third-party content (audio, video, images) without proper licensing
 - **(5.2.3)** Scan for YouTube/SoundCloud/Vimeo download functionality: `ytdl-core`, media download+save from third-party streaming. Flag `AVAssetExportSession` or file-saving on streamed third-party media
 - **(5.2.5)** Scan for Apple emoji embedded in app binary (PNG/SVG assets). Check for UI mimicking Finder, App Store, Messages. Check Activity ring visualizations that resemble system Activity rings without following HIG
