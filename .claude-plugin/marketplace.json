@@ -1,0 +1,22 @@
+{
+  "name": "appstore-review-skill",
+  "owner": {
+    "name": "Semih Aslan"
+  },
+  "metadata": {
+    "description": "App Store Review Guidelines compliance checker for iOS apps"
+  },
+  "plugins": [
+    {
+      "name": "appstore-review-skill",
+      "source": ".",
+      "description": "Checks an iOS/iPadOS/macOS app project against Apple's App Store Review Guidelines before submission.",
+      "version": "1.1.0",
+      "author": {
+        "name": "Semih Aslan"
+      },
+      "repository": "https://github.com/devsemih/appstore-review-skill",
+      "license": "MIT"
+    }
+  ]
+}
