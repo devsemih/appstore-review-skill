@@ -65,7 +65,7 @@ cd ~/.claude/skills/appstore-review-skill && git pull
 Open your project in Claude Code and run:
 
 ```
-/appstore-review-skill:appstore-review
+/appstore-review
 ```
 
 That's it. The skill will scan your project and output a structured compliance report.
