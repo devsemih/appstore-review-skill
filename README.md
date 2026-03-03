@@ -1,8 +1,8 @@
 # appstore-review-skill
 
-> A Claude Code skill that audits your iOS app against Apple's App Store Review Guidelines — **before** Apple rejects it.
+> A Claude Code plugin that audits your iOS app against Apple's App Store Review Guidelines — **before** Apple rejects it.
 
-Stop guessing. Run `/app-review` and get a full compliance report in seconds.
+Stop guessing. Run `/appstore-review-skill:run` and get a full compliance report in seconds.
 
 ---
 
@@ -23,26 +23,49 @@ This skill auto-detects your project type and adapts all checks accordingly:
 
 ## Installation
 
-### Global (all projects)
+### Via Plugin Manager (Recommended)
 
-```bash
-git clone https://github.com/devsemih/appstore-review-skill ~/.claude/skills/app-review
+```
+/plugin marketplace add devsemih/appstore-review-skill
+/plugin install appstore-review-skill
 ```
 
-### Project-specific only
+### Via Git Clone
+
+**Global (all projects):**
 
 ```bash
-git clone https://github.com/devsemih/appstore-review-skill .claude/skills/app-review
+git clone https://github.com/devsemih/appstore-review-skill ~/.claude/skills/appstore-review-skill
 ```
 
-Then restart Claude Code. The `/app-review` command will be available.
+**Project-specific:**
+
+```bash
+git clone https://github.com/devsemih/appstore-review-skill .claude/skills/appstore-review-skill
+```
+
+Then restart Claude Code.
+
+## Updating
+
+### Plugin Manager
+
+```
+/plugin marketplace update
+```
+
+### Git Clone
+
+```bash
+cd ~/.claude/skills/appstore-review-skill && git pull
+```
 
 ## Usage
 
 Open your project in Claude Code and run:
 
 ```
-/app-review
+/appstore-review-skill:run
 ```
 
 That's it. The skill will scan your project and output a structured compliance report.
@@ -65,6 +88,7 @@ That's it. The skill will scan your project and output a structured compliance r
 
 ### Section 3 — Business
 - In-App Purchase compliance (digital goods must use IAP)
+- Restore Purchases mechanism and subscription terms display
 - Detection of Stripe/PayPal for digital content (violation)
 - Loot box odds disclosure
 - Review prompt abuse
@@ -196,11 +220,15 @@ Based on Apple's [App Store Review Guidelines](https://developer.apple.com/app-s
 | 4. Design | 4.1 — 4.10 |
 | 5. Legal | 5.1 — 5.2 |
 
+## Guidelines Version
+
+This skill is based on Apple's **App Store Review Guidelines as of February 6, 2026**. Apple updates these guidelines periodically — if you encounter a mismatch, please open an issue or PR.
+
 ## Contributing
 
 PRs welcome. Here's how you can help:
 
-- **Add checks** — Found a rejection reason not covered? Add it to `SKILL.md`
+- **Add checks** — Found a rejection reason not covered? Add it to `skills/run/SKILL.md`
 - **Reduce false positives** — Help make detection more precise
 - **Update guidelines** — Apple updates their guidelines periodically
 - **Share rejection stories** — Real-world examples help everyone
@@ -208,12 +236,6 @@ PRs welcome. Here's how you can help:
 ## License
 
 MIT — see [LICENSE](LICENSE)
-
----
-
-## Guidelines Version
-
-This skill is based on Apple's **App Store Review Guidelines as of February 6, 2026**. Apple updates these guidelines periodically — if you encounter a mismatch, please open an issue or PR.
 
 ---
 

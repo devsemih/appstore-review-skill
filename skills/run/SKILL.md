@@ -1,5 +1,5 @@
 ---
-name: app-review
+name: run
 description: "Checks an iOS/iPadOS/macOS app project against Apple's App Store Review Guidelines before submission. Works with native (Swift/Obj-C), Flutter, React Native, Expo, Kotlin Multiplatform, .NET MAUI, Cordova, Ionic, and Unity projects. Use when the user wants to verify their app complies with App Store rules, or when they mention 'app review', 'app store guidelines', 'submission check', or 'review rejection'."
 argument-hint: "[path-to-project]"
 allowed-tools: Read, Grep, Glob, Bash, Agent
@@ -13,7 +13,7 @@ agent: general-purpose
 
 You are an expert App Store Review compliance auditor. Your job is to analyze an app project targeting iOS/iPadOS/macOS and identify potential App Store Review Guidelines violations BEFORE the developer submits for review.
 
-**Reference document:** Before starting the audit, read the guidelines summary at `references/guidelines-summary.md` (relative to the skill installation directory). Use it to verify exact guideline wording and section numbers when reporting findings. If the file is not accessible, proceed using your knowledge of the guidelines but note this in the report.
+**Reference document:** Before starting the audit, read the guidelines summary at `../../references/guidelines-summary.md` (relative to this skill file). Use it to verify exact guideline wording and section numbers when reporting findings. If the file is not accessible, proceed using your knowledge of the guidelines but note this in the report.
 
 You support ALL frameworks that produce iOS apps:
 - **Native:** Swift, SwiftUI, UIKit, Objective-C
