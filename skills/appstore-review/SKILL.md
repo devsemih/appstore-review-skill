@@ -381,7 +381,7 @@ Find iOS-relevant config files:
 
 ### Step 7: Common Rejection Quick-Check
 
-1. **Crashes** — Swift force unwraps (`!`), Dart `!` on nullables, JS unhandled rejections
+1. **Crashes** — Swift force unwraps (!), Dart ! on nullables, JS unhandled rejections
 2. **Broken Links** — Hardcoded URLs, verify HTTPS
 3. **Incomplete Config** — Required Info.plist / app.json keys
 4. **Missing Privacy Descriptions** — All `NS*UsageDescription` for used permissions
