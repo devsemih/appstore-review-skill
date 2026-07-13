@@ -1,25 +1,33 @@
 # appstore-review-skill
 
-> A Claude Code plugin that audits your iOS app against Apple's App Store Review Guidelines — **before** Apple rejects it.
+> A Claude Code plugin that audits your mobile app against store review policies — **before** the store rejects it.
 
-Stop guessing. Run `/appstore-review` and get a full compliance report in seconds.
+Two skills, one plugin:
+
+| Command | Store | Based On |
+|---------|-------|----------|
+| `/appstore-review` | Apple App Store | [App Store Review Guidelines](https://developer.apple.com/app-store/review/guidelines/) |
+| `/playstore-review` | Google Play | [Developer Program Policies](https://play.google/developer-content-policy/) |
+
+Stop guessing. Run the command and get a full compliance report in seconds.
 
 ---
 
 ## Supported Frameworks
 
-This skill auto-detects your project type and adapts all checks accordingly:
+Both skills auto-detect your project type and adapt all checks accordingly:
 
 | Framework | Detection |
 |-----------|-----------|
 | **Swift / SwiftUI / UIKit** | `.xcodeproj`, `.swift` files |
-| **Flutter** | `pubspec.yaml`, `ios/Runner/` |
+| **Kotlin / Java (native Android)** | `build.gradle(.kts)`, `AndroidManifest.xml` |
+| **Flutter** | `pubspec.yaml`, `ios/Runner/`, `android/app/` |
 | **React Native** | `package.json` + `react-native` |
 | **Expo** | `app.json` / `app.config.js` + `expo` |
-| **Kotlin Multiplatform** | `build.gradle.kts` + `iosApp/` |
-| **.NET MAUI** | `.csproj` + `Platforms/iOS/` |
+| **Kotlin Multiplatform** | `build.gradle.kts` + `iosApp/` / `androidApp/` |
+| **.NET MAUI** | `.csproj` + `Platforms/iOS/` / `Platforms/Android/` |
 | **Cordova / Ionic / Capacitor** | `config.xml`, `capacitor.config.ts` |
-| **Unity** | `ProjectSettings/`, Xcode export |
+| **Unity** | `ProjectSettings/`, Xcode/Gradle export |
 
 ## Installation
 
@@ -65,12 +73,15 @@ cd ~/.claude/skills/appstore-review-skill && git pull
 Open your project in Claude Code and run:
 
 ```
-/appstore-review
+/appstore-review     # audit against Apple's App Store guidelines
+/playstore-review    # audit against Google Play policies
 ```
 
 That's it. The skill will scan your project and output a structured compliance report.
 
-## What Gets Checked
+---
+
+## `/appstore-review` — What Gets Checked
 
 ### Section 1 — Safety
 - Objectionable content in strings and resources
@@ -120,7 +131,7 @@ That's it. The skill will scan your project and output a structured compliance r
 - Mobile Device Management (MDM) restrictions
 - Developer Code of Conduct (dark patterns, scam detection)
 
-### Quick-Check — Top 10 Rejection Reasons
+### Quick-Check — Top 10 App Store Rejection Reasons
 1. Crashes / risky code patterns
 2. Broken or HTTP links
 3. Incomplete metadata
@@ -132,10 +143,81 @@ That's it. The skill will scan your project and output a structured compliance r
 9. Missing account deletion
 10. Missing privacy manifest
 
+---
+
+## `/playstore-review` — What Gets Checked
+
+### Privacy & User Data
+- Privacy policy linked in-app (required in listing AND in app)
+- **Data safety consistency** — every data-collecting SDK cross-checked against what must be declared in the Data safety form
+- Prominent disclosure & consent before sensitive data collection
+- **Account deletion** — in-app deletion + web resource required when account creation exists
+- Advertising ID (`AD_ID`) usage and Android 13+ requirements
+
+### Permissions & Sensitive APIs
+- **SMS & Call Log** restrictions (with SMS Retriever API alternatives)
+- `QUERY_ALL_PACKAGES`, `MANAGE_EXTERNAL_STORAGE` — declaration-gated permissions
+- Accessibility API misuse detection
+- **Background location** — justification, declaration, prominent disclosure
+- Photo/Video permissions vs. Android photo picker
+- Foreground service types (Android 14+), exact alarms, full-screen intent
+- VPN service, overlay, and package-install permission checks
+- Unused-permission detection (minimal permission principle)
+
+### Monetization & Ads
+- **Google Play Billing** compliance (digital goods must use Play Billing)
+- Detection of Stripe/PayPal for digital content (violation)
+- Subscription terms, trial disclosure, easy cancellation
+- Disruptive ads (unexpected interstitials, lockscreen ads, hidden ads)
+- Consent (UMP/CMP) before ad personalization
+- Loot box odds disclosure, review prompt manipulation
+
+### Restricted Content
+- Financial services (loan app rules: APR caps, repayment periods, prohibited permissions)
+- Real-money gambling licensing and geo-restrictions
+- User-generated content moderation (report, block, filter)
+- Health Connect restricted data use
+- Blockchain/NFT declarations
+- **AI-generated content** reporting mechanism requirement
+
+### Device Abuse & Deception
+- Dynamic code loading from outside Play (dex/native code)
+- Hidden features and kill switches (post-review unlocks)
+- Ad fraud patterns, overlay abuse
+- Fake system dialogs, cleaner/booster scams
+- Malware / MUwS basics (icon hiding, device admin abuse)
+
+### Families & Kids
+- Families Self-Certified Ads SDKs only
+- No AAID / location for child-directed apps
+- `tagForChildDirectedTreatment` verification
+- Neutral age screens for mixed audiences
+
+### Store Listing & Technical
+- **Target API level** requirement
+- Metadata policy (title length, emoji, promo language)
+- Webview-wrapper / minimum functionality detection
+- `debuggable`, cleartext traffic, committed keystores
+- Hardcoded secrets and staging URLs
+
+### Quick-Check — Top 10 Play Rejection/Removal Reasons
+1. Data safety form mismatch
+2. Restricted permissions without declaration
+3. Background location without justification
+4. Play Billing bypass
+5. Missing account deletion
+6. Target API level too old
+7. Missing privacy policy
+8. Families policy violations
+9. Disruptive ads
+10. Minimum functionality (webview wrappers)
+
+---
+
 ## Example Reports
 
 <details>
-<summary><b>Swift / SwiftUI Project</b></summary>
+<summary><b>Swift / SwiftUI Project (App Store)</b></summary>
 
 ```
 # App Store Review Compliance Report
@@ -163,37 +245,69 @@ Fix: Add "Delete Account" option in settings with server-side deletion
 </details>
 
 <details>
-<summary><b>Flutter Project</b></summary>
+<summary><b>Kotlin Project (Google Play)</b></summary>
 
 ```
-# App Store Review Compliance Report
+# Google Play Policy Compliance Report
 
 ## Project Summary
-- App Name: MyFlutterApp
-- Bundle ID: com.example.myflutterapp
-- Framework: Flutter 3.x
-- Deployment Target: iOS 15.0
+- App Name: MyApp
+- Application ID: com.example.myapp
+- Framework: Native Kotlin
+- Target SDK: 34 / Min SDK: 24
+- Declared Permissions: 9 (2 restricted)
 
 ## Critical Issues
 
-### [CRITICAL] Guideline 5.1.1(v) — Account Deletion Missing
-Issue: App uses firebase_auth for sign-up but no delete account flow found
-Location: lib/features/auth/
-Fix: Add account deletion calling FirebaseAuth.instance.currentUser?.delete()
+### [CRITICAL] Policy: Permissions — QUERY_ALL_PACKAGES Without Qualifying Use Case
+Issue: Manifest declares QUERY_ALL_PACKAGES but the app is not a launcher/security app
+Location: app/src/main/AndroidManifest.xml:12
+Fix: Replace with a <queries> element listing the specific packages you interact with
+
+### [CRITICAL] Policy: User Data — Account Deletion Missing
+Issue: Firebase Auth signup exists but no in-app account deletion found
+Location: app/src/main/java/.../SettingsActivity.kt
+Fix: Add "Delete Account" flow calling currentUser.delete() + declare a web deletion resource in the Data safety form
+
+## Declarations Required in Play Console
+- [ ] Data safety form: Firebase Analytics (device IDs, app interactions)
+
+## Final Verdict: NEEDS FIXES — 2 critical issues must be resolved
+```
+</details>
+
+<details>
+<summary><b>Flutter Project (Google Play)</b></summary>
+
+```
+# Google Play Policy Compliance Report
+
+## Project Summary
+- App Name: MyFlutterApp
+- Application ID: com.example.myflutterapp
+- Framework: Flutter 3.x
+- Target SDK: 34 / Min SDK: 23
+
+## Critical Issues
+
+### [CRITICAL] Policy: Background Location — Undeclared Use
+Issue: ACCESS_BACKGROUND_LOCATION declared but no core feature requires it
+Location: android/app/src/main/AndroidManifest.xml:8
+Fix: Remove the permission, or justify it via the Play Console declaration + prominent in-app disclosure
 
 ## Warnings
 
-### [WARNING] Guideline 1.6 — Hardcoded API Key
-Issue: Stripe publishable key found in source code
-Location: lib/services/payment_service.dart:12
-Fix: Move to --dart-define or .env via flutter_dotenv
+### [WARNING] Policy: Ads — Consent Before Personalization
+Issue: google_mobile_ads initialized before any consent flow (UMP not found)
+Location: lib/main.dart:22
+Fix: Integrate the User Messaging Platform and gate ad requests on consent
 
 ## Final Verdict: NEEDS FIXES
 ```
 </details>
 
 <details>
-<summary><b>Expo Project</b></summary>
+<summary><b>Expo Project (App Store)</b></summary>
 
 ```
 # App Store Review Compliance Report
@@ -211,40 +325,26 @@ Issue: expo-auth-session used for Google OAuth but expo-apple-authentication not
 Location: app/(auth)/login.tsx:23
 Fix: npx expo install expo-apple-authentication and add Apple sign-in button
 
-## Warnings
-
-### [WARNING] Guideline 2.3 — Missing Privacy Description
-Issue: expo-camera installed but no camera usage description in app.json
-Location: app.json
-Fix: Add expo.ios.infoPlist.NSCameraUsageDescription to app.json
-
 ## Final Verdict: NEEDS FIXES
 ```
 </details>
 
-## Guidelines Coverage
+## Policy Coverage & Versions
 
-Based on Apple's [App Store Review Guidelines](https://developer.apple.com/app-store/review/guidelines/):
+| Skill | Source | Version |
+|-------|--------|---------|
+| `/appstore-review` | [App Store Review Guidelines](https://developer.apple.com/app-store/review/guidelines/) — Sections 1–5 | February 6, 2026 |
+| `/playstore-review` | [Google Play Developer Program Policies](https://play.google/developer-content-policy/) — all policy areas | July 2026 |
 
-| Section | Coverage |
-|---------|----------|
-| 1. Safety | 1.1 — 1.7 |
-| 2. Performance | 2.1 — 2.5 |
-| 3. Business | 3.1 — 3.2 |
-| 4. Design | 4.1 — 4.10 |
-| 5. Legal | 5.1 — 5.6 |
-
-## Guidelines Version
-
-This skill is based on Apple's **App Store Review Guidelines as of February 6, 2026**. Apple updates these guidelines periodically — if you encounter a mismatch, please open an issue or PR.
+Apple and Google update these policies periodically — if you encounter a mismatch, please open an issue or PR.
 
 ## Contributing
 
 PRs welcome. Here's how you can help:
 
-- **Add checks** — Found a rejection reason not covered? Add it to `skills/appstore-review/SKILL.md`
+- **Add checks** — Found a rejection reason not covered? Add it to `skills/appstore-review/SKILL.md` or `skills/playstore-review/SKILL.md`
 - **Reduce false positives** — Help make detection more precise
-- **Update guidelines** — Apple updates their guidelines periodically
+- **Update guidelines** — Apple and Google update their policies periodically
 - **Share rejection stories** — Real-world examples help everyone
 
 ## License
@@ -253,4 +353,4 @@ MIT — see [LICENSE](LICENSE)
 
 ---
 
-**Disclaimer:** This skill checks against publicly available Apple guidelines. It does not guarantee App Store approval. Always review the [official guidelines](https://developer.apple.com/app-store/review/guidelines/) before submission.
+**Disclaimer:** This plugin checks against publicly available Apple and Google policies. It does not guarantee store approval. Always review the official [App Store guidelines](https://developer.apple.com/app-store/review/guidelines/) and [Google Play policies](https://play.google/developer-content-policy/) before submission.
