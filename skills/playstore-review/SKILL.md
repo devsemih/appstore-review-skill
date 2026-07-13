@@ -203,6 +203,12 @@ Parse ALL `<uses-permission>` entries from every `AndroidManifest.xml` (and `exp
 - Real-money gambling requires Play application process, license, geo-restriction, age gate (21+/18+ per region), and must be free to download
 - Simulated gambling → content rating must reflect it
 
+**Age-Restricted Content and Functionality:**
+- If the app is real-money gambling OR its core functionality is dating/matchmaking → "Restrict Minor Access" is REQUIRED: target audience must be declared "18 and over" only in Play Console (note as required declaration)
+- Detect dating features: search for "dating", "match", "matchmaking", "swipe" in code/strings, dating SDKs, profile-browsing + chat combinations
+- If dating/matchmaking is an **incidental** feature (not core) → verify an in-app age-gating mechanism exists that blocks minors from those specific features (neutral age screen, date-of-birth check)
+- If `com.google.android.play:age-signals` (Play Age Signals API) is used → verify signals are NOT passed to ad/analytics/marketing SDKs (prohibited use → suspension risk)
+
 **User Generated Content:**
 - Detect UGC features (chat, comments, profiles, media upload):
   - Flutter: `firebase_core` + Firestore, `stream_chat_flutter` | RN/Expo: `react-native-gifted-chat`, Firebase | Any: Socket.IO, Supabase realtime
@@ -366,6 +372,7 @@ Parse ALL `<uses-permission>` entries from every `AndroidManifest.xml` (and `exp
 - [ ] No hidden features / kill switches
 - [ ] UGC moderation (report, block, filter) if UGC exists
 - [ ] AI content reporting mechanism (if AI-generated content)
+- [ ] Restrict Minor Access / age-gating (if gambling or dating features)
 - [ ] No debuggable/cleartext release config
 - [ ] No hardcoded secrets or committed keystores
 - [ ] App name/metadata policy compliant
