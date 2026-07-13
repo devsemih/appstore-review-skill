@@ -5,14 +5,14 @@
     "name": "Semih Aslan"
   },
   "metadata": {
-    "description": "App Store Review Guidelines compliance checker for iOS apps"
+    "description": "App Store and Google Play review policy compliance checker for mobile apps"
   },
   "plugins": [
     {
       "name": "appstore-review-skill",
       "source": "./",
-      "description": "Checks an iOS/iPadOS/macOS app project against Apple's App Store Review Guidelines before submission.",
-      "version": "1.1.0",
+      "description": "Checks mobile app projects against Apple's App Store Review Guidelines and Google Play's Developer Program Policies before submission.",
+      "version": "1.2.0",
       "author": {
         "name": "Semih Aslan"
       },
@@ -21,10 +21,14 @@
       "category": "development",
       "keywords": [
         "ios",
+        "android",
         "app-store",
+        "google-play",
         "review-guidelines",
+        "play-policy",
         "apple",
         "swift",
+        "kotlin",
         "flutter",
         "react-native",
         "expo"
