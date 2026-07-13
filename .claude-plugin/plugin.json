@@ -1,7 +1,7 @@
 {
   "name": "appstore-review-skill",
-  "description": "Checks an iOS/iPadOS/macOS app project against Apple's App Store Review Guidelines before submission. Works with native Swift, Flutter, React Native, Expo, KMP, .NET MAUI, Cordova, Ionic, and Unity projects.",
-  "version": "1.1.0",
+  "description": "Checks mobile app projects against store review policies before submission: Apple's App Store Review Guidelines (/appstore-review) and Google Play's Developer Program Policies (/playstore-review). Works with native Swift/Kotlin, Flutter, React Native, Expo, KMP, .NET MAUI, Cordova, Ionic, and Unity projects.",
+  "version": "1.2.0",
   "author": {
     "name": "Semih Aslan",
     "url": "https://github.com/devsemih"
