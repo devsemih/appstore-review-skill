@@ -181,7 +181,7 @@ Parse ALL `<uses-permission>` entries from every `AndroidManifest.xml` (and `exp
   - Flutter: `google_mobile_ads`, `applovin_max`, `unity_ads`, `ironsource_mediation`, `facebook_audience_network`
   - RN/Expo: `react-native-google-mobile-ads`, `react-native-applovin-max`, `expo-ads-admob` (legacy)
   - Native: GMA SDK, AppLovin, ironSource, Unity Ads, Vungle, Chartboost
-- If interstitials: verify they are closeable, not triggered unexpectedly (at app open, during gameplay, after every action), and don't interfere with navigation
+- If interstitials: verify they are closeable **within 15 seconds**, not triggered unexpectedly (at app open/before splash, during gameplay, at level start, after every action), and don't interfere with navigation
 - Flag lockscreen ads, out-of-app-context ads, notification ads
 - Rewarded ads: verify explicit user opt-in before showing
 - Ad SDK initialization before consent (UMP/CMP) → flag for GDPR regions; check for `UserMessagingPlatform` / consent SDK usage
@@ -225,6 +225,7 @@ Parse ALL `<uses-permission>` entries from every `AndroidManifest.xml` (and `exp
 **Child Endangerment / Inappropriate Content:**
 - Scan user-facing strings for sexual content, hate speech, violence glorification, dangerous products
 - Sensitive events: scan for content capitalizing on disasters/conflicts
+- **Child Safety Standards (Social & Dating apps):** if the app is a social or dating app, verify an in-app CSAE report mechanism exists and note the required Play Console items as manual checks (published CSAE standards URL, child safety contact, CSAM reporting process)
 
 ### Step 6: Device & Network Abuse / Deceptive Behavior Checks
 
@@ -247,6 +248,7 @@ Parse ALL `<uses-permission>` entries from every `AndroidManifest.xml` (and `exp
 
 **Malware / MUwS basics:**
 - Scan for: SMS premium sending, hidden device admin (`DeviceAdminReceiver` without user-facing purpose), root exploitation, keylogging patterns, apps hiding their icon (`setComponentEnabledSetting` disabling launcher activity)
+- If the app has monitoring features (parental control, employee monitoring): verify `IsMonitoringTool` metadata flag in manifest, persistent notification while monitoring, and no covert-tracking marketing — covert partner/adult tracking is banned (stalkerware)
 
 ### Step 7: Families & Kids Checks
 
