@@ -128,7 +128,20 @@ Apps hosting or providing access to UGC must:
 - No promoting or glamorizing potential earnings from trading/holding tokenized assets.
 - In-app purchases of tokenized assets follow standard Play Billing rules where applicable.
 
-### 1.9 AI-Generated Content
+### 1.9 Age-Restricted Content and Functionality
+
+> Sources: answer/16302250; incidental dating features: answer/16838200; US app-store bills: answer/16569691; Age Signals API: https://developer.android.com/google/play/age-signals/overview
+
+Apps in covered categories **must block minors (under 18)** using Play Console tools:
+
+- **Covered:** real-money gambling/games/contests apps, and apps whose **core functionality** is dating or matchmaking.
+- **Mechanism — "Restrict Minor Access":** in Play Console → Target audience and content, declare **"18 and over" as the sole target age group** and enable the restriction. Users Google determines to be under 18 (declared account age or Google's signals) cannot search for, download, or purchase the app; existing installs keep working but cannot renew subscriptions or make new purchases.
+- **Incidental dating carve-out (since April 15, 2026):** apps where dating/matchmaking is an incidental (non-core) feature need not block minors app-wide, **provided they implement effective alternative age-gating** preventing minors from reaching those specific features. Google doesn't mandate a specific technology — it must "reasonably prevent" minor access (neutral age screens are the established model).
+- **Enforcement:** policy announced October 30, 2025; in force since **January 28, 2026** for RMG and core-dating apps.
+- **Play Age Signals API (beta):** `com.google.android.play:age-signals` — returns `userStatus` (VERIFIED/DECLARED/SUPERVISED/…) and age-range bands, but **only in jurisdictions where Play is legally required to provide them** (Brazil Digital ECA since March 2026; Texas SB 2420 from January 2026 with phased signals; Utah May 2026; Louisiana July 2026). Signals may be used **only** for age-appropriate experiences — use for advertising, marketing, profiling, or analytics is prohibited and can trigger suspension. "Significant changes" (new data collection, rating change, new monetization, material UX change) require notifying Play via the Age signals page so supervised users' parents can re-approve.
+- **Interaction with Families:** this policy is the inverse of Families — Families obligations attach when children are IN the target audience; this policy forces covered adult-only apps OUT of minors' reach. A covered app declaring a mixed/teen audience is a violation. UK Online Safety Act "highly effective age assurance" duties fall on the app itself — Play's store-level tools alone don't satisfy Ofcom.
+
+### 1.10 AI-Generated Content
 
 > Sources: answer/13985936; best practices: answer/16353813
 
@@ -442,6 +455,7 @@ Requirements enforced through Play Console forms (not code review alone):
 | **Health apps declaration** | Health/medical apps |
 | **Gambling application** | Real-money gambling apps |
 | **Child safety standards declaration** | Social & Dating category apps |
+| **Restrict Minor Access (18+ target audience)** | Real-money gambling apps and core-dating/matchmaking apps |
 | **News declaration** | News apps |
 
 ---
