@@ -1,0 +1,28 @@
+name: nearby_chat
+description: "Huddle - chat with people around you."
+publish_to: 'none'
+version: 2.3.1+58
+
+environment:
+  sdk: ^3.5.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  firebase_core: ^3.6.0
+  firebase_auth: ^5.3.1
+  cloud_firestore: ^5.4.4
+  google_mobile_ads: ^5.2.0
+  geolocator: ^13.0.1
+  flutter_stripe: ^11.2.0
+  http: ^1.2.2
+  intl: ^0.19.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
