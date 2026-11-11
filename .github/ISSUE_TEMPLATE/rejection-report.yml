@@ -1,0 +1,54 @@
+name: Rejection report
+description: Share a real App Store / Google Play rejection so it becomes a new check
+title: "[Rejection] <store>: <guideline or policy>"
+labels: ["rejection-report"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Each real rejection can become a new check.
+        **Remove anything private** (app names, bundle IDs, reviewer names, credentials) before posting.
+  - type: dropdown
+    id: store
+    attributes:
+      label: Store
+      options: [Apple App Store, Google Play]
+    validations:
+      required: true
+  - type: input
+    id: guideline
+    attributes:
+      label: Guideline / policy cited
+      placeholder: "e.g. Guideline 5.1.1(v), ITMS-91053, Policy: Data safety"
+    validations:
+      required: true
+  - type: dropdown
+    id: framework
+    attributes:
+      label: Framework
+      options: [Swift / SwiftUI / UIKit, Kotlin / Java, Flutter, React Native, Expo, Kotlin Multiplatform, .NET MAUI, Capacitor / Cordova / Ionic, Unity, Other]
+    validations:
+      required: true
+  - type: textarea
+    id: message
+    attributes:
+      label: Rejection message (redacted)
+      description: The relevant part of the reviewer's message.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: cause
+    attributes:
+      label: Actual root cause and fix
+      description: What was really wrong, and what got the app approved?
+  - type: dropdown
+    id: caught
+    attributes:
+      label: Did /appstore-review or /playstore-review catch it?
+      options: ["Yes", "No, it was missed", "Didn't run it before submitting"]
+  - type: textarea
+    id: detect
+    attributes:
+      label: How could it be detected from code? (optional)
+      placeholder: "e.g. package X in package.json without Y in app.json"

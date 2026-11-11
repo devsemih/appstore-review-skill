@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Apple App Review Guidelines
+    url: https://developer.apple.com/app-store/review/guidelines/
+    about: The official source for App Store rules
+  - name: Google Play Developer Policy Center
+    url: https://play.google/developer-content-policy/
+    about: The official source for Google Play policies

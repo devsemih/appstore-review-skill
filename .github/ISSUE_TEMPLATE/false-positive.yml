@@ -1,0 +1,36 @@
+name: False positive
+description: The audit flagged something that isn't actually a problem
+title: "[False positive] <guideline or policy>: <short description>"
+labels: ["false-positive"]
+body:
+  - type: dropdown
+    id: skill
+    attributes:
+      label: Skill
+      options: [/appstore-review, /playstore-review, /appstore-rejection, /playstore-rejection]
+    validations:
+      required: true
+  - type: textarea
+    id: finding
+    attributes:
+      label: The finding (copy from the report)
+      render: markdown
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why it's wrong
+      description: e.g. "This is a publishable key", "It's platform-branching code, not user-facing text", "The app passed review with this"
+    validations:
+      required: true
+  - type: textarea
+    id: snippet
+    attributes:
+      label: Minimal code/config snippet (redacted, optional)
+      render: text
+  - type: input
+    id: framework
+    attributes:
+      label: Framework and version
+      placeholder: "e.g. Expo SDK 57, Flutter 3.38"

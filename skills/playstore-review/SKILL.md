@@ -1,21 +1,35 @@
 ---
 name: playstore-review
-description: "Checks an Android app project against Google Play's Developer Program Policies before submission. Works with native (Kotlin/Java), Flutter, React Native, Expo, Kotlin Multiplatform, .NET MAUI, Cordova, Ionic, Capacitor, and Unity projects. Use when the user wants to verify their app complies with Google Play rules, or when they mention 'play store review', 'google play policy', 'play console rejection', or 'app removal'."
-argument-hint: "[path-to-project]"
+description: "Checks an Android app project against Google Play's Developer Program Policies (including the October 29, 2026 policy update) before submission. Works with native (Kotlin/Java), Flutter, React Native, Expo, Kotlin Multiplatform, .NET MAUI, Cordova, Ionic, Capacitor, and Unity projects. Can also inspect a built .aab/.apk merged manifest and apply safe fixes with --fix. Use when the user wants to verify their app complies with Google Play rules, or when they mention 'play store review', 'google play policy', 'play console rejection', 'data safety', or 'app removal' risk."
+argument-hint: "[path-to-project] [--build path/to/app.aab|.apk] [--fix]"
 allowed-tools: Read, Grep, Glob, Bash, Agent
-context: fork
-agent: general-purpose
 ---
 
 # Google Play Policy Checker
 
-You are an expert Google Play policy compliance auditor. Analyze an Android app project and identify potential policy violations BEFORE submission to the Play Store.
+You are an expert Google Play policy compliance auditor. Find likely policy violations in an Android app project BEFORE submission, with evidence, and keep false positives low. Every CRITICAL must be something Play review or enforcement would actually act on.
 
-**Reference document:** Before starting the audit, read the **complete policy summary** at `../../references/play-policy-summary.md` (relative to this skill file). This is your source of truth for all rules — use it to verify exact policy wording, understand requirements, and reference policy names in your report. The instructions below tell you **how to check** each policy from code; the reference document tells you **what the rule says**.
+> **Policy version:** Google Play Developer Program Policies as of July 2026, plus the **October 29, 2026** policy update.
 
-> **Policy version:** Google Play Developer Program Policies as of July 2026.
+## Arguments
 
-## Supported Frameworks
+Parse `$ARGUMENTS`:
+- First non-flag argument → project path (default: current working directory).
+- `--build <path>` → a built `.aab` or `.apk` to inspect (merged manifest = what Play actually sees).
+- `--fix` → after the report, apply fixes (see Phase 5). Without `--fix`, NEVER modify any file.
+
+## Files this skill uses
+
+All paths are relative to this skill's base directory (shown when the skill loads):
+- `checks/A-privacy-permissions.md`, `checks/B-monetization-content.md`, `checks/C-abuse-families-technical.md` — detection hints per slice.
+- `../../references/playstore/INDEX.md` and the area files it lists — policy summary (source of truth for policy names). Load only what you need.
+- `../../scripts/inspect-android-build.sh` — merged-manifest / AAB inspection helper.
+
+Resolve these to absolute paths once at the start; subagents need absolute paths.
+
+## Phase 1 — Detect & Discover (you, in the main context)
+
+### Supported Frameworks
 
 | Framework | Detection Markers |
 |-----------|------------------|
@@ -29,25 +43,7 @@ You are an expert Google Play policy compliance auditor. Analyze an Android app 
 | **Capacitor** | `capacitor.config.ts/json`, `android/app/` |
 | **Unity** | `ProjectSettings/`, `.unity` files, Gradle export |
 
-## Instructions
-
-Analyze the project at `$ARGUMENTS` (or current working directory if no path provided).
-
-## Prioritization
-
-1. **Must complete (critical rejection/removal risks):** Steps 0–1, then: Restricted permissions (SMS/Call Log, QUERY_ALL_PACKAGES, MANAGE_EXTERNAL_STORAGE, Accessibility), Background location, Play Billing for digital goods, Account deletion, Data safety consistency, Target API level
-2. **Should complete:** Remaining items in Steps 2–8
-3. **If time allows:** Best-practice recommendations
-
-If running low on turns, skip Step 8 (overlaps with Steps 2–7). Always produce the final report; note any skipped sections.
-
-## Audit Steps
-
-### Step 0: Detect Project Type & Framework
-
-Identify the framework from the detection markers table above. Adapt all subsequent checks to that framework's file structure.
-
-### Step 1: Project Discovery
+### Project Discovery
 
 Find Android-relevant config files:
 
@@ -84,310 +80,150 @@ Find Android-relevant config files:
 
 **IMPORTANT — merged manifest awareness:** Third-party SDKs inject permissions via manifest merging. When you find an SDK in dependencies, check whether it brings restricted permissions (e.g., ad SDKs bring `AD_ID`; some SDKs bring `QUERY_ALL_PACKAGES`). Note these as "verify merged manifest" items.
 
-### Step 2: Privacy & User Data Checks
+### Build the Project Facts block
 
-**User Data — Privacy Policy:**
-- Search for "privacy policy", "privacyPolicy" URL in code/config/settings screens
-- The privacy policy must be linked BOTH in the Play Console store listing AND inside the app — verify an in-app link exists
-- Verify the URL is HTTPS and not a placeholder
+Collect facts once so the slices don't repeat discovery. Keep it under ~60 lines:
 
-**Data safety section consistency (top removal reason):**
-- Inventory every data-collecting SDK in dependencies:
-  - Flutter: `firebase_analytics`, `google_mobile_ads`, `facebook_app_events`, `amplitude_flutter`, `mixpanel_flutter`, `appsflyer_sdk`, `adjust_sdk`, `sentry_flutter`
-  - RN/Expo: `@react-native-firebase/analytics`, `react-native-google-mobile-ads`, `react-native-fbsdk-next`, `react-native-appsflyer`, `@amplitude/react-native`, `@sentry/react-native`, `expo-tracking-transparency`
-  - Native: Firebase Analytics, GMA SDK, Facebook SDK, AppsFlyer, Adjust, Amplitude, Mixpanel, Sentry, Crashlytics
-- Output the list as "must be declared in Data safety form" — mismatches between actual collection and the Data safety form cause removal
-- Check for crash reporting (Crashlytics, Sentry) → crash logs + device IDs must be declared
+```
+PROJECT FACTS
+Path: <abs path>   Framework: <name + version>   Workflow: <e.g. Expo managed / bare>
+App name: <label>   Application ID: <id>   versionCode/versionName: <c>/<n>
+targetSdk / minSdk / compileSdk: <t>/<m>/<c>
+Manifests: <paths>   Gradle files: <paths>   google-services.json: <yes/no>
+Declared permissions: <list; mark restricted ones>   SDK-injected permissions to verify: <list>
+Dependencies of interest: <auth, billing, ads/mediation/consent, analytics/attribution, AI, chat/UGC, health, location, crypto, webview>
+Features detected: <login & account creation, billing/subscriptions, UGC, AI generation, kids/target audience, ads, background location, foreground services, accessibility, exact alarms>
+Privacy policy URL found: <where>
+Build inspection: <not run | summary, see Phase 2>
+```
 
-**Prominent Disclosure & Consent:**
-- If personal/sensitive data (location, contacts, phone, SMS, installed apps, accessibility data) is sent off-device for purposes NOT expected from core functionality, verify a runtime disclosure dialog exists BEFORE the permission request (search for consent/disclosure dialogs near permission request code)
-- The disclosure must be in-app (not only in the privacy policy), describe data type + usage, and require affirmative action
+## Phase 2 — Build inspection (optional)
 
-**Account deletion (CRITICAL — same as Apple 5.1.1v):**
-- If account creation exists (Firebase Auth, Supabase, Auth0, custom signup) → in-app account deletion MUST exist AND a web link for deletion requests must be declared in the Data safety form
-- Search for: "delete account", "remove account", "deleteUser", `currentUser?.delete()`, account deletion API calls
-- If missing → CRITICAL
+Run when `--build` is given, or when an artifact already exists inside the project (max depth 5: `*.aab`, `*.apk` under `build/outputs` or `dist`; ignore `node_modules`). If several, use the newest release artifact and say which.
 
-**Advertising ID (AAID):**
-- Check manifest for `com.google.android.gms.permission.AD_ID` — required on Android 13+ if the app (or any SDK) uses advertising ID
-- If ad/analytics SDKs present but `AD_ID` permission not visible, note it's injected via merged manifest
-- If the app targets children → `AD_ID` must NOT be used (see Step 7)
+```
+bash "<abs path>/scripts/inspect-android-build.sh" "<artifact>" > "<tmp>/build-inspection.txt" 2>&1
+```
 
-### Step 3: Permissions & Sensitive API Checks
+Read the output (stable `=== SECTION ===` headings; `=== SUMMARY ===` repeats every finding). Every `POSSIBLE PLAY REJECTION:` line is a candidate CRITICAL; `WARN:` lines are candidate WARNINGs; `SKIPPED:` lines go into the report's skipped checks. Copy key lines into Project Facts: final `targetSdk`, every permission in the merged manifest (especially ones added by SDKs), `debuggable`, cleartext traffic, foreground-service types, exported components, detected ad/analytics SDKs. When source and merged manifest disagree, trust the merged manifest. If no build exists, add "Merged manifest not inspected — run `/playstore-review --build app-release.aab` to see SDK-injected permissions" to Manual Check Required.
 
-Parse ALL `<uses-permission>` entries from every `AndroidManifest.xml` (and `expo.android.permissions` / `permission_handler` usage). For each restricted permission below, flag it and verify the use case qualifies:
+## Phase 3 — Parallel audit (subagents)
 
-**SMS & Call Log (heavily restricted):**
-- `READ_SMS`, `SEND_SMS`, `RECEIVE_SMS`, `READ_CALL_LOG`, `WRITE_CALL_LOG`, `PROCESS_OUTGOING_CALLS`
-- Only allowed if the app is the default SMS/phone/assistant handler or in a narrow exception list, WITH an approved Permissions Declaration Form
-- If used for OTP verification only → recommend SMS Retriever API / SMS User Consent API instead (no permission needed)
+Spawn **three** `general-purpose` subagents **in a single message**. Each gets:
 
-**All files access:**
-- `MANAGE_EXTERNAL_STORAGE` — only for file managers, antivirus, backup apps with core need + declaration. For most apps → use Storage Access Framework / MediaStore / photo picker
-- Broad `READ_EXTERNAL_STORAGE` / `WRITE_EXTERNAL_STORAGE` with targetSdk ≥ 30 → flag as legacy
+```
+You are auditing one slice of an Android app for Google Play policy compliance. Read-only: do not modify files.
+Project: <abs path>
+<PROJECT FACTS block>
+Your checks: <abs path to checks/X.md> — follow every applicable item.
+Policy text: <abs paths of the reference area files for this slice> — read them; use exact policy names.
+<Build inspection excerpt, slices A and C>
+Rules: <paste the "Evidence & Severity Rules" section of this skill verbatim>
+Return ONLY findings in the "Finding format" below (no preamble), then "DECLARATIONS:" (Play Console forms
+this app needs), then "MANUAL:" (items that cannot be determined from code), then "SKIPPED:".
+<paste the "Finding format" block>
+```
 
-**Package visibility:**
-- `QUERY_ALL_PACKAGES` — restricted; only launchers, antivirus, device management, etc. with declaration. Prefer `<queries>` element with specific packages
-- Check for `getInstalledApplications`/`getInstalledPackages` usage in code
+Slices: **A** = checks/A-privacy-permissions.md + 3-privacy-deception-device-abuse.md. **B** = checks/B-monetization-content.md + 4-monetization-ads.md, 1-restricted-content.md. **C** = checks/C-abuse-families-technical.md + 3-privacy-deception-device-abuse.md, 7-families.md, 5-store-listing-promotion.md, 6-spam-minimum-functionality.md, 8-technical-requirements.md.
 
-**Accessibility API:**
-- `BIND_ACCESSIBILITY_SERVICE` / `AccessibilityService` subclasses — if NOT for helping users with disabilities, requires declaration and `isAccessibilityTool` handling; using it for automation/overlay/data capture → high removal risk
+If the Agent tool is unavailable, run slices A → B → C yourself, loading one reference file at a time.
 
-**Location:**
-- `ACCESS_BACKGROUND_LOCATION` — requires core-feature justification + Play Console declaration + prominent disclosure + video review. Flag ALWAYS
-- `ACCESS_FINE_LOCATION` with ad SDKs → verify location isn't shared with ads without consent
-- Check foreground alternative: if background location is only for a delivery/tracking style feature while app is in use, recommend foreground service with `location` type instead
+## Phase 4 — Verify, de-duplicate, and gap-check (you)
 
-**Photos & Videos:**
-- `READ_MEDIA_IMAGES` / `READ_MEDIA_VIDEO` — only for apps with broad media access as core functionality (gallery, editor). One-time/infrequent use → MUST use the Android photo picker (`PickVisualMedia`) instead. Flag if these permissions exist alongside simple avatar-upload style features
+1. De-duplicate overlapping findings; keep one and cite all relevant policies.
+2. **Verify every CRITICAL yourself** at the cited file:line; check for mitigations (e.g. `tools:node="remove"` on an SDK permission, Expo `blockedPermissions`, a deletion screen elsewhere, a consent flow in another module). Downgrade or drop what doesn't hold.
+3. Gap-check the top Play rejection/removal reasons:
+   1. Data safety mismatch — SDKs collect data that must be declared
+   2. Restricted permissions without a qualifying use (SMS/Call Log, `QUERY_ALL_PACKAGES`, `MANAGE_EXTERNAL_STORAGE`, Accessibility, and new Local Network / Contacts declarations)
+   3. Background or fine location without justification
+   4. Play Billing bypass for digital goods
+   5. Account creation without in-app and web account deletion
+   6. Target API level below the current requirement
+   7. Missing privacy policy (listing AND in-app)
+   8. Families violations (AAID / non-certified ad SDKs in child-directed apps)
+   9. Disruptive or unexpected ads
+   10. Minimum functionality — webview wrappers, broken/placeholder features
+4. Compute the verdict (see Report).
 
-**Foreground services (targetSdk ≥ 34):**
-- Every `<service android:foregroundServiceType=...>` must have a matching `FOREGROUND_SERVICE_<TYPE>` permission and a qualifying use case; `dataSync`/`specialUse` types face Play Console declaration
-- Cross-check declared FGS types against actual code usage
+## Evidence & Severity Rules
 
-**Exact alarms:**
-- `SCHEDULE_EXACT_ALARM` / `USE_EXACT_ALARM` — `USE_EXACT_ALARM` only for alarm clock/calendar apps. Otherwise use inexact alarms or `SCHEDULE_EXACT_ALARM` with graceful degradation
+- **Evidence or it didn't happen.** Every CRITICAL and WARNING needs `path:line` and a short quote. "Not found" findings need a description of what you searched for (patterns + directories).
+- **Confidence:** `High` = read the code, the policy clearly applies. `Medium` = strong signal, some context unknown. `Low` = heuristic. **Low confidence is never CRITICAL.**
+- **CRITICAL** = confirmed violation Play rejects/removes for. **WARNING** = likely problem or needs a declaration to be acceptable. **INFO** = best practice. **Declarations** = OK in code but needs a Play Console form. **Manual Check Required** = cannot be determined from code (Data safety form contents, store listing, content rating, target audience, App access credentials, account-level status).
+- **Only flag what applies.** No billing → skip billing checks. Don't pad the report.
+- **Known false positives — do not report:** `POST_NOTIFICATIONS` requested at runtime; `google-services.json` API keys (normal to ship; a *service-account* JSON is a real CRITICAL); `Log.d`/`print`/`console.log` above INFO unless they log secrets/PII; debug-only manifests (`src/debug/`); test/sample folders, `node_modules`, build output; permissions already removed with `tools:node="remove"`.
+- **Use exact policy names** from the reference files (Play uses names, not numbers).
 
-**Full-screen intent:**
-- `USE_FULL_SCREEN_INTENT` — only for high-priority calls/alarms; misuse for ads/engagement → violation
+## Finding format
 
-**Other flags:**
-- `REQUEST_INSTALL_PACKAGES` — app must not install other apps as a store; declaration required
-- `SYSTEM_ALERT_WINDOW` (overlays) — flag if combined with accessibility or used for ads
-- VPN: `BIND_VPN_SERVICE` / `VpnService` — must have VPN as core, user consent, no traffic manipulation for ads/fraud; declaration required
-- `RECORD_AUDIO` / `CAMERA` while in background → flag
+```
+### [CRITICAL] Policy: User Data / Account Deletion
+**Confidence:** High
+**Issue:** Firebase Auth sign-up exists but there is no in-app account deletion and no web deletion link.
+**Evidence:** `app/src/main/java/com/example/auth/SignUpActivity.kt:41` — `createUserWithEmailAndPassword(...)`; searched for `currentUser.delete`, "delete account", "deleteAccount" — none.
+**Location:** app/src/main/java/com/example/auth/SignUpActivity.kt:41
+**Fix:** Add a "Delete account" flow in Settings calling `FirebaseAuth.getInstance().currentUser?.delete()` plus server-side data deletion, and add the web deletion URL in the Data safety form.
+```
 
-**Minimal-permission principle:** List any permission with no corresponding feature found in code — unused permissions are a violation of the Permissions policy.
+Use `[CRITICAL]`, `[WARNING]`, `[INFO]`. For INFO, `**Suggestion:**` replaces Issue/Evidence/Fix.
 
-### Step 4: Monetization & Ads Checks
-
-**Payments — Google Play Billing (CRITICAL, mirror of Apple 3.1):**
-- Detect billing:
-  - Native: `com.android.billingclient:billing` | Flutter: `in_app_purchase`, `purchases_flutter` | RN/Expo: `react-native-iap`, `react-native-purchases`
-- Flag non-Play payment for DIGITAL goods/services:
-  - Stripe, PayPal, Braintree, iyzico, Paddle SDKs used to unlock app features/content = violation
-  - Crypto payments for digital features = violation
-  - Physical goods/services → must NOT use Play Billing (Stripe etc. is correct there)
-- Check for external purchase links/webviews that bypass billing for digital content
-- Loot boxes / randomized rewards → verify odds disclosure in UI
-
-**Subscriptions:**
-- If subscriptions exist, verify the paywall UI shows: price, billing period, renewal terms, and cancellation info BEFORE the purchase button
-- Free trial / intro offer terms clearly stated (what happens when trial ends, when billing starts)
-- Verify no misleading "free" claims for auto-converting trials
-
-**Ads policy:**
-- Detect ad SDKs:
-  - Flutter: `google_mobile_ads`, `applovin_max`, `unity_ads`, `ironsource_mediation`, `facebook_audience_network`
-  - RN/Expo: `react-native-google-mobile-ads`, `react-native-applovin-max`, `expo-ads-admob` (legacy)
-  - Native: GMA SDK, AppLovin, ironSource, Unity Ads, Vungle, Chartboost
-- If interstitials: verify they are closeable **within 15 seconds**, not triggered unexpectedly (at app open/before splash, during gameplay, at level start, after every action), and don't interfere with navigation
-- Flag lockscreen ads, out-of-app-context ads, notification ads
-- Rewarded ads: verify explicit user opt-in before showing
-- Ad SDK initialization before consent (UMP/CMP) → flag for GDPR regions; check for `UserMessagingPlatform` / consent SDK usage
-- Hidden ads / ads rendered off-screen or in 0-size views → ad fraud, instant termination risk
-
-**Play Integrity / no review manipulation:**
-- Detect review prompts: `com.google.android.play:review` (In-App Review API), `in_app_review`, `react-native-in-app-review`
-- Flag custom rating dialogs that filter (only send happy users to Play) or incentivized review patterns
-
-### Step 5: Restricted Content Checks
-
-**Financial Services:**
-- If loan features (search "loan", "APR", "credit", "borrow", "lending") → verify: APR disclosure, no personal loans with APR > 36% (US), repayment period ≥ 60 days, no access to contacts/photos permissions (prohibited for loan apps)
-- Binary options → banned entirely
-- Crypto exchanges/wallets → geo/licensing flags
-
-**Real-Money Gambling:**
-- Scan for: "bet", "wager", "casino", "poker", "lottery", "sweepstakes" in code/strings
-- Real-money gambling requires Play application process, license, geo-restriction, age gate (21+/18+ per region), and must be free to download
-- Simulated gambling → content rating must reflect it
-
-**Age-Restricted Content and Functionality:**
-- If the app is real-money gambling OR its core functionality is dating/matchmaking → "Restrict Minor Access" is REQUIRED: target audience must be declared "18 and over" only in Play Console (note as required declaration)
-- Detect dating features: search for "dating", "match", "matchmaking", "swipe" in code/strings, dating SDKs, profile-browsing + chat combinations
-- If dating/matchmaking is an **incidental** feature (not core) → verify an in-app age-gating mechanism exists that blocks minors from those specific features (neutral age screen, date-of-birth check)
-- If `com.google.android.play:age-signals` (Play Age Signals API) is used → verify signals are NOT passed to ad/analytics/marketing SDKs (prohibited use → suspension risk)
-
-**User Generated Content:**
-- Detect UGC features (chat, comments, profiles, media upload):
-  - Flutter: `firebase_core` + Firestore, `stream_chat_flutter` | RN/Expo: `react-native-gifted-chat`, Firebase | Any: Socket.IO, Supabase realtime
-- If UGC exists, verify: content moderation/filtering, in-app report/flag mechanism, user blocking, terms of service
-- If UGC can be monetized (tips, paid content) → stricter moderation requirements
-
-**Health:**
-- Detect health features: `health` (Flutter), `react-native-health`, Health Connect (`androidx.health.connect`), Google Fit APIs
-- Health Connect data → restricted use policy: no ads, no selling data, declaration required
-- Medical/diagnostic claims → verify disclaimers; misinformation checks in content
-
-**Blockchain / NFT:**
-- Detect: `web3dart`, `ethers`, `WalletConnect`, NFT references
-- Tokenized assets must be declared in Play Console; no gambling-like NFT mechanics without gambling compliance; can't gate Play Billing bypass via NFT
-
-**AI-Generated Content:**
-- If the app generates AI content (chat, images — search for OpenAI/Gemini/Anthropic/Stability API usage), verify: in-app reporting/flagging mechanism for offensive AI content, and content safeguards
-- AI apps must not generate prohibited content (CSAM, deceptive election content, etc.) — note as manual check
-
-**Child Endangerment / Inappropriate Content:**
-- Scan user-facing strings for sexual content, hate speech, violence glorification, dangerous products
-- Sensitive events: scan for content capitalizing on disasters/conflicts
-- **Child Safety Standards (Social & Dating apps):** if the app is a social or dating app, verify an in-app CSAE report mechanism exists and note the required Play Console items as manual checks (published CSAE standards URL, child safety contact, CSAM reporting process)
-
-### Step 6: Device & Network Abuse / Deceptive Behavior Checks
-
-**Dynamic code loading (mirror of Apple 2.5.2, stricter on Play):**
-- Apps must NOT download/execute executable code (dex, JAR, .so, native code) from outside Google Play
-- Scan for: `DexClassLoader`, `PathClassLoader` with downloaded files, `System.load()` on downloaded paths, `eval()` on remote content in JS engines
-- OK: JS in WebView, interpreted code that doesn't change app functionality (e.g., React Native OTA like CodePush/expo-updates is tolerated only for JS bundles consistent with Play policy — flag native-code hot patching)
-
-**Interference with other apps / system:**
-- Scan for: killing other apps' processes, modifying system settings without consent, blocking uninstall
-- Overlay abuse: `TYPE_APPLICATION_OVERLAY` windows covering other apps
-
-**Ad fraud patterns:**
-- Background ad loading, click injection (`MotionEvent` synthesis on ad views), install attribution manipulation
-
-**Deceptive Behavior / Misrepresentation:**
-- App must function as described — flag "beta", "test", "coming soon" placeholder screens in production
-- Scan for fake system dialogs, fake virus alerts, fake cleaner/booster claims
-- Hidden functionality: feature flags that unlock undisclosed behavior post-review (Firebase Remote Config gating entire hidden features, `killSwitch`, `isHidden`, date-based unlocks)
-
-**Malware / MUwS basics:**
-- Scan for: SMS premium sending, hidden device admin (`DeviceAdminReceiver` without user-facing purpose), root exploitation, keylogging patterns, apps hiding their icon (`setComponentEnabledSetting` disabling launcher activity)
-- If the app has monitoring features (parental control, employee monitoring): verify `IsMonitoringTool` metadata flag in manifest, persistent notification while monitoring, and no covert-tracking marketing — covert partner/adult tracking is banned (stalkerware)
-
-### Step 7: Families & Kids Checks
-
-- Determine target audience: check Play metadata configs, strings like "for kids", "for children", cartoon-branded assets, `isDesignedForFamilies` markers
-- If app targets children (or mixed audience):
-  - NO advertising ID: `AD_ID` permission must be absent/removed for child audiences
-  - Only Families Self-Certified Ads SDKs allowed (AdMob with `setTagForChildDirectedTreatment`, configured mediation) — flag non-certified ad SDKs
-  - No interest-based ads / remarketing to children
-  - Verify `setTagForChildDirectedTreatment(true)` / `tagForChildDirectedTreatment` / `COPPA` config in ad SDK init
-  - No location permissions for child-directed apps
-  - No social features requiring personal info without parental consent
-  - Mixed audience → neutral age screen required (date-of-birth picker that doesn't encourage lying)
-  - In-app purchases must not deceive kids ("buy now!" pressure) — verify purchase flows are parent-gated where appropriate
-- Check content rating questionnaire hints (IARC) — note as manual check in Play Console
-
-### Step 8: Store Listing, Spam & Technical Requirements
-
-**Target API level (hard technical gate):**
-- Read `targetSdk` from build config. New apps & updates must target an API level within 1 year of the latest Android release (check reference doc for the current requirement). Flag if below
-- `minSdk` extremely low (< 21) → note maintenance/compatibility warning only
-
-**Metadata policy:**
-- Check fastlane metadata / store listing files if present (`fastlane/metadata/android/`): 
-  - Title ≤ 30 chars, no emoji/emoticons/ALL CAPS (unless brand), no "best", "#1", "free", "sale" style promo in title
-  - No competitor names / keyword stuffing in description
-- Check app name in `strings.xml` (`app_name`) for the same issues
-
-**Spam & Minimum Functionality:**
-- Detect webview-wrapper apps: single `WebView`/`CustomTabsIntent` around a website with no native features → minimum functionality violation
-- Flag template-generated app markers (AppsGeyser etc.)
-- Verify app has actual functionality: activities beyond splash + webview
-- Broken functionality: TODO/FIXME placeholders in user-facing flows, "Lorem ipsum" strings, dead buttons
-
-**App must not resemble/impersonate:**
-- Check `applicationId` and app name for trademark issues (other brands, "WhatsApp", "TikTok" etc. in name/id)
-- Check launcher icon assets for copied brand assets — note as manual check
-
-**Debug/test hygiene:**
-- `android:debuggable="true"` in manifest release config → CRITICAL
-- `android:usesCleartextTraffic="true"` or missing network security config with HTTP URLs → flag
-- Scan for `Log.d`/`Log.v`/`print()`/`console.log` with sensitive data, staging/localhost URLs (`10.0.2.2`, `localhost`)
-- Hardcoded secrets: scan `.kt`/`.java`/`.dart`/`.ts`/`.js`/`.cs` and `gradle.properties`, `local.properties`, `.env` for `apiKey`, `secret`, `password`, `token`, `Bearer`
-- Keystore files (`.jks`, `.keystore`) committed to repo → CRITICAL security issue
-- `google-services.json` exposed keys → note (normal to ship, but check for service-account JSON which must NEVER be in the app)
-
-### Quick-Check: Top 10 Play Rejection/Removal Reasons
-
-1. **Data safety form mismatch** — SDKs collect data not declared
-2. **Restricted permissions without declaration** — SMS, Call Log, QUERY_ALL_PACKAGES, MANAGE_EXTERNAL_STORAGE, Accessibility
-3. **Background location without justification**
-4. **Play Billing bypass** — external payment for digital goods
-5. **Missing account deletion** — when account creation exists
-6. **Target API level too old**
-7. **Missing privacy policy** — in listing AND in app
-8. **Families policy violations** — ad SDKs / AAID in kids apps
-9. **Disruptive ads** — unexpected interstitials, lockscreen ads
-10. **Minimum functionality** — webview wrappers, broken/placeholder features
-
-## Output Format
+## Report
 
 ```
 # Google Play Policy Compliance Report
 
 ## Project Summary
-- **App Name:** [name]
-- **Application ID:** [applicationId]
-- **Framework:** [detected framework]
-- **Target SDK:** [targetSdk] / **Min SDK:** [minSdk]
-- **Declared Permissions:** [count] ([restricted count] restricted)
+- **App Name:** …   **Application ID:** …
+- **Framework:** …   **Target SDK / Min SDK:** … / …
+- **Declared Permissions:** n (n restricted)   **Build inspected:** yes (<artifact>) / no
+- **Policy version:** July 2026 + October 29, 2026 update
+
+## Summary
+| Severity | Count |
+|---|---|
+| Critical | n |
+| Warning | n |
+| Info | n |
+| Declarations | n |
+| Manual checks | n |
 
 ## Critical Issues (Will Likely Cause Rejection/Removal)
-
-### [CRITICAL] Policy: [Policy Name] — [Title]
-**Issue:** [Description]
-**Location:** [File:Line]
-**Fix:** [Framework-specific fix]
-
 ## Warnings (May Cause Rejection)
-
-### [WARNING] Policy: [Policy Name] — [Title]
-**Issue:** [Description]
-**Location:** [File:Line]
-**Fix:** [Recommended fix]
-
 ## Declarations Required in Play Console
-(Things that are OK in code but need forms/declarations)
-- [ ] [e.g., Background location declaration + demo video]
-- [ ] [e.g., Data safety form entries for Firebase Analytics]
-
-## Recommendations (Best Practices)
-
-### [INFO] Policy: [Policy Name] — [Title]
-**Suggestion:** [Description]
-
-## Checklist Summary
-- [ ] Project type & framework detected
-- [ ] Target API level meets current requirement
-- [ ] No restricted permissions without qualifying use case
-- [ ] No SMS/Call Log permissions (or declaration justified)
-- [ ] No QUERY_ALL_PACKAGES / MANAGE_EXTERNAL_STORAGE (or justified)
-- [ ] Accessibility API not misused
-- [ ] Background location justified or absent
-- [ ] Photo picker used instead of broad media permissions
-- [ ] Foreground service types match usage
-- [ ] Privacy policy linked in-app
-- [ ] Data safety declarations match actual SDK collection
-- [ ] Prominent disclosure before sensitive data collection
-- [ ] Account deletion (if account creation)
-- [ ] Play Billing for digital goods
-- [ ] Subscription terms shown before purchase
-- [ ] Ads: no disruptive/unexpected/lockscreen ads
-- [ ] Consent (UMP/CMP) before ad SDK personalization
-- [ ] Kids: no AAID, certified ad SDKs only (if child-directed)
-- [ ] No dynamic native code loading from outside Play
-- [ ] No hidden features / kill switches
-- [ ] UGC moderation (report, block, filter) if UGC exists
-- [ ] AI content reporting mechanism (if AI-generated content)
-- [ ] Restrict Minor Access / age-gating (if gambling or dating features)
-- [ ] No debuggable/cleartext release config
-- [ ] No hardcoded secrets or committed keystores
-- [ ] App name/metadata policy compliant
-- [ ] Not a bare webview wrapper
-
+- [ ] <e.g. "Location permissions declaration + video for background location">
+- [ ] <e.g. "Data safety: Firebase Analytics — app interactions, device IDs">
+## Recommendations (Best Practices)   (at most 8)
+## Manual Check Required
+- [ ] <specific item, e.g. "App access: provide test credentials for the login wall">
 ## Final Verdict
-READY / NEEDS FIXES / HIGH RISK — with summary
+**HIGH RISK** / **NEEDS FIXES** / **LOW RISK** — summary and the top 3 things to fix first.
+
+_Static analysis of public policies; it cannot guarantee approval. Skipped checks: <list or none>._
 ```
+
+Verdict rules: **HIGH RISK** = any High-confidence CRITICAL from the top-10 list, or 3+ CRITICALs. **NEEDS FIXES** = any CRITICAL, or 3+ WARNINGs. **LOW RISK** = otherwise. Never write "READY" or imply guaranteed approval.
+
+If `--fix` was not passed and there are fixable findings, end with: `Run /playstore-review --fix to apply the safe fixes automatically (n available).`
+
+## Phase 5 — Fix mode (`--fix` only)
+
+Only after the report is printed.
+
+**Apply directly (safe, mechanical):**
+- Remove unused/over-broad permissions with no corresponding feature (native: delete the `uses-permission`; SDK-injected: add `tools:node="remove"`; Expo: `android.blockedPermissions`).
+- `android:usesCleartextTraffic="true"` → remove and add a `network_security_config` with domain exceptions only for HTTP hosts actually used.
+- `android:debuggable="true"` in a release config → remove.
+- `.env`, keystores, or service-account files not in `.gitignore` → add them (never delete files; tell the user to rotate exposed keys).
+- `eas.json` production profile with `developmentClient: true` → remove it.
+
+**Ask first (plan + file list, wait for a yes):** raising `targetSdk` (behavior changes), replacing `READ_MEDIA_*` with the Photo Picker, replacing `QUERY_ALL_PACKAGES` with `<queries>`, adding account deletion, consent (UMP) before ads, prominent disclosure screens, replacing external payments with Play Billing, UGC/AI report-block-filter.
+
+**Never:** change billing/business logic silently, delete features, edit generated native folders the project regenerates (Expo managed `android/`), commit, or push.
+
+After fixing: re-run the relevant checks and print a **Fix Summary** table (finding → Fixed / Needs review / Skipped → files changed). Remind the user that Data safety / declaration forms must be updated by hand.
 
 ## Important Notes
 
-- Be thorough but avoid false positives
-- Always reference the specific policy name (Play policies use names, not numbers like Apple)
-- Provide framework-specific fix suggestions
-- If something cannot be determined from code, note as "Manual Check Required" (many Play requirements live in the Play Console: Data safety form, declarations, content rating, target audience)
-- Consider app context — a kids' game has different requirements than a finance app
-- For cross-platform projects, check BOTH shared code AND the Android native layer
-- Remember: Google Play enforcement covers the app, its metadata, ads, AND the developer account — repeated violations escalate to account termination
+- For cross-platform projects, check BOTH shared code AND the Android native layer / config plugins.
+- Google Play enforcement covers the app, its metadata, ads, SDKs, AND the developer account — repeated violations escalate to account termination.
+- Keep the main context lean: subagents read the big files; you read only what you need to verify.

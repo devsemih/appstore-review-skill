@@ -1,0 +1,51 @@
+{
+  "expo": {
+    "name": "Fitloop",
+    "slug": "fitloop",
+    "version": "1.4.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "fitloop",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "bundleIdentifier": "app.fitloop.ios",
+      "buildNumber": "42",
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "Fitloop lets you pick a progress photo from your library to attach to a workout log.",
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true
+        },
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "privacyManifests": {
+        "NSPrivacyAccessedAPITypes": [
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
+            "NSPrivacyAccessedAPITypeReasons": ["CA92.1"]
+          }
+        ]
+      }
+    },
+    "android": {
+      "package": "app.fitloop.android",
+      "versionCode": 42,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#101418"
+      }
+    },
+    "plugins": [
+      "expo-router",
+      "expo-camera"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "6f1c2b0e-4a8d-4b7e-9d3a-2c51f0a9e7b4"
+      },
+      "supportUrl": "https://fitloop.app/support",
+      "privacyPolicyUrl": "https://fitloop.app/privacy"
+    }
+  }
+}

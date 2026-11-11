@@ -1,21 +1,35 @@
 ---
 name: appstore-review
-description: "Checks an iOS/iPadOS/macOS app project against Apple's App Store Review Guidelines before submission. Works with native (Swift/Obj-C), Flutter, React Native, Expo, Kotlin Multiplatform, .NET MAUI, Cordova, Ionic, and Unity projects. Use when the user wants to verify their app complies with App Store rules, or when they mention 'app review', 'app store guidelines', 'submission check', or 'review rejection'."
-argument-hint: "[path-to-project]"
+description: "Checks an iOS/iPadOS/macOS app project against Apple's App Store Review Guidelines (October 16, 2026 revision) before submission. Works with native (Swift/Obj-C), Flutter, React Native, Expo, Kotlin Multiplatform, .NET MAUI, Cordova, Ionic, Capacitor, and Unity projects. Can also inspect a built .ipa/.xcarchive for privacy-manifest problems (ITMS-91053/91061) and apply safe fixes with --fix. Use when the user wants to verify their app complies with App Store rules, or when they mention 'app review', 'app store guidelines', 'submission check', 'will my app get rejected', or 'review rejection' risk before submitting."
+argument-hint: "[path-to-project] [--build path/to/App.ipa|.xcarchive|.app] [--fix]"
 allowed-tools: Read, Grep, Glob, Bash, Agent
-context: fork
-agent: general-purpose
 ---
 
 # App Store Review Guidelines Checker
 
-You are an expert App Store Review compliance auditor. Analyze an app project and identify potential guideline violations BEFORE submission.
+You are an expert App Store Review compliance auditor. Find likely guideline violations in an app project BEFORE submission, with evidence, and keep false positives low. A noisy report is a bad report: every CRITICAL must be something an Apple reviewer would actually reject for.
 
-**Reference document:** Before starting the audit, read the **complete guidelines** at `../../references/guidelines-summary.md` (relative to this skill file). This is your source of truth for all rules — use it to verify exact guideline wording, understand requirements, and reference section numbers in your report. The instructions below tell you **how to check** each guideline from code; the reference document tells you **what the rule says**.
+> **Guidelines version:** Apple App Store Review Guidelines, **October 16, 2026** revision.
 
-> **Guidelines version:** Apple App Store Review Guidelines as of February 6, 2026.
+## Arguments
 
-## Supported Frameworks
+Parse `$ARGUMENTS`:
+- First non-flag argument → project path (default: current working directory).
+- `--build <path>` → a built `.ipa`, `.xcarchive`, or `.app` to inspect in addition to source.
+- `--fix` → after the report, apply fixes (see Phase 5). Without `--fix`, NEVER modify any file.
+
+## Files this skill uses
+
+All paths are relative to this skill's base directory (shown when the skill loads):
+- `checks/A-safety-performance.md`, `checks/B-business-design.md`, `checks/C-privacy-legal.md` — detection hints per slice.
+- `../../references/appstore/INDEX.md` and the section files it lists — the verbatim guideline text (source of truth for rule wording and numbers). Load only the sections you need; never load all of them into the main context.
+- `../../scripts/inspect-ios-build.sh` — binary inspection helper.
+
+Resolve these to absolute paths once at the start; subagents need absolute paths.
+
+## Phase 1 — Detect & Discover (you, in the main context)
+
+### Supported Frameworks
 
 | Framework | Detection Markers |
 |-----------|------------------|
@@ -29,25 +43,7 @@ You are an expert App Store Review compliance auditor. Analyze an app project an
 | **Capacitor** | `capacitor.config.ts/json`, `ios/App/` |
 | **Unity** | `ProjectSettings/`, `.unity` files, Xcode export |
 
-## Instructions
-
-Analyze the project at `$ARGUMENTS` (or current working directory if no path provided).
-
-## Prioritization
-
-1. **Must complete (critical rejection risks):** Steps 0–1, then: Sign in with Apple (4.8), Account Deletion (5.1.1v), Privacy Manifest (5.1.1), IAP compliance (3.1), Usage Descriptions (2.3)
-2. **Should complete:** Remaining items in Steps 2–7
-3. **If time allows:** Best-practice recommendations
-
-If running low on turns, skip Step 7 (overlaps with Steps 2–6). Always produce the final report; note any skipped sections.
-
-## Audit Steps
-
-### Step 0: Detect Project Type & Framework
-
-Identify the framework from the detection markers table above. Adapt all subsequent checks to that framework's file structure.
-
-### Step 1: Project Discovery
+### Project Discovery
 
 Find iOS-relevant config files:
 
@@ -83,384 +79,157 @@ Find iOS-relevant config files:
 
 **React Native:** Check both `ios/` structure and `package.json`. Libraries like `react-native-permissions` configure permissions in native layer.
 
-### Step 2: Safety Checks (Section 1)
+### Build the Project Facts block
 
-**Guideline 1.1 — Objectionable Content (1.1.1–1.1.7):**
-- Scan user-facing strings for offensive content:
-  - Native: `Localizable.strings`, `.xcstrings`
-  - Flutter: `lib/l10n/`, `*.arb`
-  - RN/Expo: `i18n/`, `locales/`, `translations/`
-  - MAUI: `Resources/Strings/`
-- **(1.1.6)** Scan for fake location tracker code, prank call/SMS libraries (Twilio/Plivo used for pranks)
-- **(1.1.7)** Scan strings for references capitalizing on disasters, epidemics, conflicts
+Before auditing, collect facts once so the slices don't repeat discovery. Keep it under ~60 lines:
 
-**Guideline 1.2 — User-Generated Content:**
-- Detect UGC features — search for:
-  - Flutter: `firebase_core`, `cloud_firestore`, `stream_chat_flutter`
-  - RN/Expo: `react-native-gifted-chat`, Firebase packages
-  - Any: Socket.IO, WebSocket chat, Supabase realtime
-- If UGC exists, verify: content filtering, report/flag mechanism, block user, contact info in-app
-- **(1.2.1a)** If creator content platform, verify age-gating mechanism (date-of-birth pickers, age verification)
+```
+PROJECT FACTS
+Path: <abs path>   Framework: <name + version>   Workflow: <e.g. Expo managed / bare>
+App name: <display name> (<n> chars)   Bundle ID: <id>   Version/Build: <v>/<b>
+Deployment target: <ios>   Device families: <iPhone/iPad/Mac>   Extensions: <list or none>
+Config files: <Info.plist / app.json / entitlements / PrivacyInfo.xcprivacy paths, or MISSING>
+Dependencies of interest: <auth, payments/IAP, ads/analytics/attribution, AI, chat/UGC, health, location, camera/photos, crypto, webview>
+Features detected: <login methods, account creation, IAP/subscriptions, UGC, AI generation, kids, ads, tracking, health, location, background modes>
+Usage descriptions present: <NS*UsageDescription keys>
+Privacy policy / support URLs found: <where>
+Build inspection: <not run | summary of key lines, see Phase 2>
+```
 
-**Guideline 1.3 — Kids Category:**
-- If app targets kids, verify NO third-party analytics/ad SDKs:
-  - Flutter: `google_mobile_ads`, `firebase_analytics`, `facebook_audience_network`
-  - RN/Expo: `react-native-google-mobile-ads`, `@react-native-firebase/analytics`
-  - Native: `AdSupport.framework`, `ASIdentifierManager`
+## Phase 2 — Build inspection (optional)
 
-**Guideline 1.4 — Physical Harm (1.4.1–1.4.5):**
-- Detect health/medical features:
-  - Flutter: `health`, `flutter_health_connect`
-  - RN/Expo: `react-native-health`, `expo-health`
-  - Native: `HealthKit`
-- **(1.4.1)** If medical app, verify disclaimers exist and methodology is disclosed
-- **(1.4.2)** Flag drug dosage calculators — must come from approved entities
-- **(1.4.3)** Scan for tobacco/vape/drug/alcohol encouragement in strings
-- **(1.4.4)** If DUI checkpoint data, verify law-enforcement source only
-- **(1.4.5)** Scan for challenge/bet patterns encouraging risky physical activity
+Run when `--build` is given, or when a build artifact already exists inside the project (search the project only, max depth 4: `*.ipa`, `*.xcarchive`, `build/**/*.app`; ignore `node_modules`, `Pods`, `DerivedData`). If several, use the newest and say which.
 
-**Guideline 1.5 — Developer Information:**
-- Search for "support", "contact", "help" screens or links in code
-- For Expo: check support URL in `app.json`
+```
+bash "<abs path>/scripts/inspect-ios-build.sh" "<artifact>" > "<tmp>/build-inspection.txt" 2>&1
+```
 
-**Guideline 1.6 — Data Security:**
-- Check `NSAppTransportSecurity` in Info.plist — flag `NSAllowsArbitraryLoads: YES`
-- Scan source files (`.swift`, `.dart`, `.ts`, `.js`, `.kt`, `.cs`) for: `apiKey`, `secret`, `password`, `token`, `API_KEY`, `Bearer`
-- Check `.env` files in repo (should be in `.gitignore`)
-- Check `google-services.json`, `GoogleService-Info.plist` for exposed keys
-- Verify sensitive data uses secure storage:
-  - Flutter: `flutter_secure_storage` (not `shared_preferences`)
-  - RN: `react-native-keychain` / `expo-secure-store` (not `AsyncStorage`)
-  - Native: Keychain (not `UserDefaults`)
+Read the output (stable `=== SECTION ===` headings; the final `=== SUMMARY ===` repeats every finding). Copy into Project Facts: every `POSSIBLE ITMS-xxxxx:` line (91053 required-reason API without declaration, 91061 listed SDK without privacy manifest, 90683 API used without purpose string, 90725 old SDK, 90474 iPad orientations), relevant `WARN:` lines (generic purpose strings, `get-task-allow=true`, arbitrary loads), and usage strings/entitlements that differ from source config. `INFO:` lines are context, not findings; `SKIPPED:` lines go into the report's skipped checks. The source code is not what Apple reviews — the binary is; when they disagree, trust the binary and say so. If no build exists, add "Build not inspected — run `/appstore-review --build path/to/App.ipa` after archiving to catch ITMS-91053/91061" to Manual Check Required.
 
-**Guideline 1.7 — Reporting Criminal Activity:**
-- If app has crime reporting features, verify law enforcement involvement and geo-restriction
+## Phase 3 — Parallel audit (subagents)
 
-### Step 3: Performance Checks (Section 2)
+Spawn **three** `general-purpose` subagents **in a single message** so they run concurrently. Each gets this prompt (fill the brackets):
 
-**Guideline 2.1 + 2.2 — App Completeness & Beta Testing:**
-- Search for "beta", "trial", "demo version" in user-facing strings and app name
-- **(2.1b)** If IAP product IDs defined (StoreKit config, product arrays), verify fulfillment code exists
-- Scan for `TODO`, `FIXME`, `HACK` comments
-- Scan for placeholder text: `Lorem ipsum`, `TODO`, `placeholder`
-- Scan for debug code:
-  - Flutter: `kDebugMode`, `print()` | RN/Expo: `__DEV__`, `console.log()` | Native: `#if DEBUG`, `print()`
-  - All: `localhost`, `127.0.0.1`, staging/dev URLs
+```
+You are auditing one slice of an iOS app for App Store Review compliance. Read-only: do not modify files.
+Project: <abs path>
+<PROJECT FACTS block>
+Your checks: <abs path to checks/X.md> — follow every applicable item.
+Guideline text: <abs paths of the reference section files for this slice> — read them; quote rule numbers exactly.
+<Build inspection excerpt, slice C only>
+Rules: <paste the "Evidence & Severity Rules" section of this skill verbatim>
+Return ONLY findings in the "Finding format" below (no preamble), then a line "MANUAL:" followed by
+bullet items that cannot be determined from code, then "SKIPPED:" listing checks you skipped and why.
+<paste the "Finding format" block>
+```
 
-**Guideline 2.3 — Accurate Metadata:**
-- Verify required keys in Info.plist / `app.json`:
-  - `CFBundleDisplayName`/`CFBundleName`, `CFBundleShortVersionString`, `CFBundleVersion`, `CFBundleIdentifier`
-  - Expo: `expo.name`, `expo.version`, `expo.ios.buildNumber`, `expo.ios.bundleIdentifier`
-  - Flutter: `pubspec.yaml` → `name`, `version`
-- **(2.3.1a)** Scan for hidden feature flags: Firebase Remote Config, LaunchDarkly, `featureFlag`, `killSwitch`, `isHidden`
-- **(2.3.7)** Verify app display name ≤ 30 characters
-- **(2.3.10)** Scan for "Android", "Google Play", "Play Store", "Windows Phone" in code/strings/assets
-- **(2.3.12)** Check `CHANGELOG.md`, `fastlane/metadata/*/release_notes.txt` — not empty/generic
-- Verify all `NS*UsageDescription` keys exist for used permissions:
-  `NSCameraUsageDescription`, `NSPhotoLibraryUsageDescription`, `NSMicrophoneUsageDescription`, `NSLocationWhenInUseUsageDescription`, `NSLocationAlwaysUsageDescription`, `NSContactsUsageDescription`, `NSCalendarsUsageDescription`, `NSHealthShareUsageDescription`, `NSHealthUpdateUsageDescription`, `NSBluetoothAlwaysUsageDescription`, `NSFaceIDUsageDescription`, `NSMotionUsageDescription`, `NSSpeechRecognitionUsageDescription`, `NSLocalNetworkUsageDescription`, `NSUserTrackingUsageDescription`
-- Cross-check: permission-requiring package in deps → corresponding `NS*UsageDescription` must exist
-- Verify descriptions are meaningful (not empty/generic)
+Slices: **A** = checks/A-safety-performance.md + references 1-safety.md, 2-performance.md. **B** = checks/B-business-design.md + 3-business.md, 4-design.md. **C** = checks/C-privacy-legal.md + 5-legal.md (+ build inspection output).
 
-**Guideline 2.4 — Hardware Compatibility:**
-- **(2.4.1)** Check `UIDeviceFamily` — verify iPad support
-- Check `UIRequiredDeviceCapabilities`
-- Scan for hardcoded screen sizes:
-  - Flutter: hardcoded `width`/`height` instead of `MediaQuery`
-  - RN/Expo: hardcoded dimensions instead of `Dimensions` API
-  - Native: hardcoded CGRect/frame values
-- **(2.4.2)** Scan for crypto mining: `coinhive`, `cryptonight`, `xmrig`, mining pool URLs. Flag unrelated background processing
-- **(2.4.4)** Scan strings for "restart device", "turn off Wi-Fi", "disable" system settings
-- **(2.4.5)** If macOS target: verify sandbox entitlements, no third-party installers, no auto-launch without consent, no license screens
+If the Agent tool is unavailable, run slices C → B → A yourself in that order (C and B contain most critical rejection reasons), loading one reference file at a time.
 
-**Guideline 2.5 — Software Requirements:**
-- Check for private/undocumented API usage
-- Verify minimum deployment target and deprecated API usage
-- **(2.5.2)** Scan for dynamic code loading: `dlopen`, `NSBundle.load`, `JavaScriptCore` eval of remote scripts, JSPatch, Rollout.io, CodePush native changes, `eval()` with network content
-- **(2.5.3)** Flag known malicious patterns, suspicious payloads, system file modification
-- **(2.5.4)** Cross-check `UIBackgroundModes` in Info.plist against actual code usage. Flag declared-but-unused modes
-- **(2.5.5)** Verify no hardcoded IPv4 addresses — must work on IPv6-only networks
-- **(2.5.6)** If browser/webview app, check for WebKit compliance
-- **(2.5.8)** Scan for home screen replacement / custom springboard UIs
-- **(2.5.9)** Scan for volume button overrides, system gesture interception, `openURL` blocking
-- **(2.5.11)** If `INIntent` / `Intents.intentdefinition` / `AppShortcutsProvider` exists, verify intents match app domain
-- **(2.5.12)** If `CallKit` / `IdentityLookup` imported, check for `CXCallDirectoryProvider` / `ILMessageFilterExtension`
-- **(2.5.13)** If facial recognition for auth (ARKit/Vision), verify `LocalAuthentication` is used instead. Check age-gating under 13
-- **(2.5.14)** If `ReplayKit` / screen recording, verify visible recording indicator in UI
-- **(2.5.15)** If file-picking, verify `UIDocumentPickerViewController` / `PHPickerViewController` (includes Files/iCloud)
-- **(2.5.16)** If widget extensions exist, verify no ad SDK imports in widget code
-- **(2.5.17)** If Matter (`MatterSupport`), verify Apple's framework used for pairing
-- **(2.5.18)** Scan extension targets for ad SDK imports (`GoogleMobileAds`, `FBAudienceNetwork`, `AdSupport`). Verify main app has ad-reporting mechanism if ads present
+## Phase 4 — Verify, de-duplicate, and gap-check (you)
 
-### Step 4: Business Checks (Section 3)
+1. **De-duplicate** findings that describe the same problem (e.g. 1.3 and 5.1.4 for kids ads) — keep one, cite both guidelines.
+2. **Verify every CRITICAL yourself**: open the cited file:line and confirm the evidence says what the finding claims. If it doesn't hold up, downgrade or drop it. Check for mitigations elsewhere (e.g. a "Delete account" screen in another folder, a restore button inside a shared paywall component, a server-driven Sign in with Apple button).
+3. **Gap-check the top rejection reasons**, and if a slice missed one, check it now:
+   1. Crash risks on launch paths (only concrete ones — e.g. force-unwrapped config values read at startup; don't list every force unwrap)
+   2. Broken or HTTP links (privacy policy, terms, support)
+   3. Incomplete config (required Info.plist / app.json keys)
+   4. Missing privacy purpose strings for permissions actually used
+   5. No privacy policy link inside the app
+   6. Debug / test / placeholder content reachable in release
+   7. Hardcoded secrets (server-side keys; publishable/client keys are fine)
+   8. Third-party login without an equivalent privacy-focused login (4.8)
+   9. Account creation without in-app account deletion (5.1.1(v))
+   10. Missing or incomplete privacy manifest / required-reason API declarations (5.1.1, ITMS-91053/91061)
+4. Compute the verdict (see Report).
 
-**Guideline 3.1 — Payments / In-App Purchase:**
-- Detect IAP:
-  - Native: `import StoreKit` | Flutter: `in_app_purchase`, `purchases_flutter` | RN/Expo: `react-native-iap`, `react-native-purchases`
-- Flag non-IAP payment for DIGITAL goods:
-  - Stripe, PayPal, Braintree for digital content = violation
-  - Custom payment forms for feature unlock = violation
-  - Crypto payments for digital features = violation
-  - **(3.1.3e)** Physical goods/services outside app → MUST use external payment
-- **(3.1.1)** Scan for "gift card", "voucher", "coupon" + external payment SDK → must use IAP for digital
-- **(3.1.1)** Scan for NFT references (`NFT`, `ERC-721`, `ERC-1155`, OpenSea, Alchemy) — verify ownership doesn't gate features
-- Scan for randomized reward/loot box code — verify odds display in UI
+## Evidence & Severity Rules
 
-**Guideline 3.1.2 — Subscriptions & Restore Purchases (Common Rejection):**
-- Verify **Restore Purchases** exists:
-  - Native: `SKPaymentQueue.restoreCompletedTransactions()` / StoreKit 2 `Transaction.currentEntitlements`
-  - Flutter: `InAppPurchase.instance.restorePurchases()` / RevenueCat `Purchases.restorePurchases()`
-  - RN/Expo: `RNIap.getAvailablePurchases()` / RevenueCat `Purchases.restorePurchases()`
-- **(3.1.2a)** Verify subscription periods ≥ 7 days (check StoreKit config / period constants)
-- **(3.1.2b)** If multiple tiers, verify upgrade/downgrade handling code
-- **(3.1.2c)** Verify terms (price, period, renewal, cancel) displayed BEFORE purchase button in paywall UI
-- Verify free trial terms clearly stated if offered
+- **Evidence or it didn't happen.** Every CRITICAL and WARNING needs at least one `path:line` and a short quote of the code/config. "Not found" findings (missing account deletion, missing restore) need a description of what you searched for (patterns + directories) instead.
+- **Confidence:** `High` = read the code, the rule clearly applies. `Medium` = strong signal, some context unknown. `Low` = heuristic only. **Low confidence is never CRITICAL** — make it a WARNING or a Manual Check item.
+- **CRITICAL** = a confirmed violation Apple routinely rejects for (top-10 list above, IAP bypass for digital goods, hidden features, UGC/AI without safeguards, dynamic code loading, etc.). **WARNING** = likely problem or context-dependent. **INFO** = best practice, no rejection risk. **Manual Check Required** = cannot be determined from code (App Store Connect metadata, review notes, demo account, screenshots, age rating, privacy nutrition labels, backend availability, regional entitlements).
+- **Only flag what applies to this app.** No IAP → skip 3.1 checks. No login → skip 4.8 and 5.1.1(v). Don't pad the report with "consider…" items for features the app doesn't have.
+- **Known false positives — do not report:** platform branching in code (`Platform.OS === 'android'`) under 2.3.10; client-side/publishable keys (Firebase `GoogleService-Info.plist` API key, Stripe `pk_`, Supabase anon key, RevenueCat public SDK key) as secrets; `print`/`console.log` as anything above INFO; feature flags by themselves under 2.5.19; test files, storybook, mocks, `__tests__`, sample/example folders, `node_modules`, `Pods`, build output.
+- **Quote guideline numbers from the reference text**, including sub-items (e.g. `5.1.1(v)`, `3.1.2(c)`), never from memory.
 
-**Guideline 3.1.3 — Other Purchase Methods:**
-- **(3.1.3a)** If reader app, verify no IAP prompts for previously purchased content
+## Finding format
 
-**Guideline 3.1.4 — Hardware-Specific Content:**
-- If features unlock via hardware (`CBCentralManager`, `EAAccessoryManager`), verify no unrelated product purchase required
+```
+### [CRITICAL] Guideline 4.8: Login Services
+**Confidence:** High
+**Issue:** Google sign-in creates the primary account; no equivalent privacy-focused login (e.g. Sign in with Apple) is offered.
+**Evidence:** `app/(auth)/login.tsx:23` — `Google.useAuthRequest({...})`; searched for `expo-apple-authentication`, `AppleAuthentication`, `ASAuthorizationAppleIDProvider` — none.
+**Location:** app/(auth)/login.tsx:23
+**Fix:** `npx expo install expo-apple-authentication`, add the Apple button next to Google, enable the capability in app.json (`ios.usesAppleSignIn: true`).
+```
 
-**Guideline 3.1.5 — Cryptocurrencies:**
-- Detect crypto packages: `web3swift`, `ethers`, `WalletConnect`, `solana-swift`
-- If wallet → flag: must be org account
-- Scan for on-device mining code → instant rejection
-- If exchange/trading → flag: licensing + geo-restriction required
-- **(3.1.5v)** Scan for "earn tokens", "download to earn", "share to earn" + crypto
+Use `[CRITICAL]`, `[WARNING]`, `[INFO]`. For INFO, `**Suggestion:**` replaces Issue/Evidence/Fix.
 
-**Guideline 3.2 — Other Business Model Issues:**
-- Detect review prompts:
-  - Native: `SKStoreReviewController` | Flutter: `in_app_review` | RN/Expo: `react-native-in-app-review`, `expo-store-review`
-- **(5.6.1)** Flag custom review dialogs (star-rating UI) that bypass system `requestReview()` API
-- Scan for incentivized review patterns
-- **(3.2.1v)** If insurance app → verify free, no IAP
-- **(3.2.1viii)** If trading/investing → flag: must be licensed financial institution
-- **(3.2.2i)** Scan for store-like interfaces, "install" buttons for external apps, `itms-services://`
-- **(3.2.2iii)** Flag hidden ad views or apps predominantly displaying ads
-- **(3.2.2viii)** Scan for "binary options", "call/put" trading. If CFD/FOREX → flag licensing
-- **(3.2.2ix)** If loan app (search "loan", "APR", "borrow", "lending") → verify APR disclosure, max 36%, repayment > 60 days
-
-### Step 5: Design Checks (Section 4)
-
-**Guideline 4.1 — Copycats:**
-- Check bundle ID and app name for trademark issues
-- Scan for competing app names in code/resources
-
-**Guideline 4.2 — Minimum Functionality (4.2.1–4.2.7):**
-- **(4.2.2)** Flag apps that are primarily marketing materials, ad collections, or link aggregators
-- Detect web-wrapper apps:
-  - Flutter: single `WebView` widget | RN/Expo: single `WebView` component | Native: single `WKWebView`
-  - Cordova/Ionic/Capacitor: check for native functionality beyond web shell
-- **(4.2.1)** If ARKit used (`ARSession`, `ARView`, `ARSCNView`), verify rich experience beyond single model placement
-- **(4.2.3i)** Scan for `canOpenURL` gating core features on other apps
-- **(4.2.3ii)** If large resource download at launch, verify size disclosure + user prompt
-- **(4.2.6)** Scan for template service markers (BuildFire, Appy Pie, GoodBarber, Shoutem)
-- **(4.2.7)** If remote desktop/screen mirroring (VNC, `RPScreenRecorder`), verify LAN-only, user-owned device
-
-**Guideline 4.3 — Spam:**
-- Verify single bundle ID per app concept
-
-**Guideline 4.4 — Extensions (4.4.1–4.4.2):**
-- Check for extension targets in `.xcodeproj` / `ios/`
-- **(4.4.1)** If keyboard extension → verify `advanceToNextInputMode()` called from UI button
-- **(4.4.2)** If Safari extension → check `SFSafariWebsiteAccess` — flag `All Websites` if only specific domains needed
-- Verify: keyboard works without full network, doesn't launch other apps; App Clips have no ads
-
-**Guideline 4.5 — Apple Sites and Services (4.5.1–4.5.6):**
-- **(4.5.1)** Scan for Apple website scraping (apple.com, App Store, iTunes)
-- If MusicKit used: verify user-initiated playback, standard controls, no payment gate
-  - **(4.5.2ii)** Flag file-saving on MusicKit content
-  - **(4.5.2iii)** If Apple Music user data accessed, verify purpose string + no ad SDK sharing
-- **(4.5.3)** Scan for bulk push notification patterns, Game Center spam
-- **(4.5.4)** Verify push notifications not required for core functionality, not used for marketing without opt-in
-- **(4.5.5)** If GameKit → verify `GKPlayer.gamePlayerID`/`teamPlayerID` not displayed in UI or sent to third parties
-- **(4.5.6)** Check for Apple emoji embedded in binary (PNG/SVG assets)
-
-**Guideline 4.7 — Mini Apps / Emulators (4.7.1–4.7.5):**
-- Detect code execution: JavaScript injection, eval patterns
-- **(4.7.1)** If mini-apps/plugins hosted → verify privacy compliance, content moderation, IAP for digital goods
-- **(4.7.2)** Scan `WKScriptMessageHandler` / JS bridge — flag native API exposure to embedded content
-- **(4.7.3)** Flag blanket permission grants to embedded content without per-instance consent
-- **(4.7.4)** Verify index/catalog with universal links. Check `apple-app-site-association`
-- **(4.7.5)** Verify age-gating for content exceeding app's rating
-
-**Guideline 4.8 — Login Services (CRITICAL):**
-- Detect third-party login:
-  - Flutter: `google_sign_in`, `flutter_facebook_auth`, `sign_in_with_apple`
-  - RN/Expo: `@react-native-google-signin`, `react-native-fbsdk-next`, `expo-auth-session`, `expo-apple-authentication`
-  - Native: Google Sign-In, Facebook Login, `ASAuthorizationAppleIDProvider`
-  - All: OAuth to Google, Facebook, Twitter/X, LinkedIn, Amazon, WeChat
-- **If ANY third-party login → verify Sign in with Apple exists**
-- Check for `AuthenticationServices` framework
-- Exceptions: company-only login, education/enterprise SSO, government ID
-
-**Guideline 4.9 — Apple Pay:**
-- Detect: Native `PassKit`, `PKPaymentAuthorizationViewController` | Flutter: `pay` | RN/Expo: `@stripe/stripe-react-native` Apple Pay, `react-native-payments`
-- If found, verify recurring payment disclosures in UI
-
-**Guideline 4.10 — Monetizing Built-In Capabilities:**
-- Search for paywalls/IAP gates around native device features (camera, push, gyroscope, iCloud, Screen Time)
-
-### Step 6: Privacy & Legal Checks (Section 5)
-
-**Guideline 5.1.1 — Data Collection & Storage:**
-- Check `PrivacyInfo.xcprivacy` existence:
-  - Expo: `expo-build-properties` or config plugin | Flutter: `ios/Runner/PrivacyInfo.xcprivacy`
-- Verify privacy manifest declares: `NSPrivacyTracking`, `NSPrivacyTrackingDomains`, `NSPrivacyCollectedDataTypes`, `NSPrivacyAccessedAPITypes`
-- Check required API reason declarations: file timestamp, boot time, disk space, active keyboard, user defaults APIs
-- Flag third-party SDKs needing own privacy manifests
-- **(5.1.1i)** Search for "privacy policy", "privacyPolicy" URL in code/config/settings
-- **(5.1.1ii)** Scan for permission-denial handlers that block premium content
-- **(5.1.1iii)** Flag full `PHPhotoLibrary`/`CNContact` access when `PHPickerViewController`/`CNContactPickerViewController` alternatives exist
-- **(5.1.1iv)** Verify fallback behavior on permission denial (not full block)
-- **(5.1.1vii)** If `SFSafariViewController` used, verify not hidden/zero-frame
-- **(5.1.1viii)** Flag web scraping libraries, people-search API integrations
-- **(5.1.1ix)** If banking/healthcare/gambling/cannabis/aviation/crypto domain → flag: must be legal entity
-
-**Guideline 5.1.1(v) — Account Deletion (CRITICAL):**
-- If account creation exists → account deletion MUST exist
-- Search for: "delete account", "remove account", "deactivate" in code/strings
-  - Flutter: delete account screens/dialogs | RN/Expo: delete account components | Native: delete account views
-- Check for server-side deletion API calls
-
-**Guideline 5.1.2 — Data Use and Sharing:**
-- Detect tracking/ad SDKs:
-  - Flutter: `google_mobile_ads`, `facebook_audience_network`, `appsflyer_sdk`, `adjust_sdk`
-  - RN/Expo: `react-native-google-mobile-ads`, `react-native-fbsdk-next`, `react-native-appsflyer`
-  - Native: `AdSupport`, `AppTrackingTransparency`
-- If found → verify: `AppTrackingTransparency` used, `NSUserTrackingUsageDescription` in Info.plist, ATT prompt before tracking
-- **(5.1.2ii)** Cross-check data collection SDKs with sharing destinations for repurposing
-- **(5.1.2iii)** Flag device fingerprinting: `UIDevice` property aggregation (model+OS+screen+timezone+language)
-- **(5.1.2iv)** If Contacts/Photos accessed, flag bulk-upload patterns
-- **(5.1.2v)** If contact messaging, verify no "Select All" option, message preview before send
-- **(5.1.2vi)** If HomeKit/ClassKit/ARKit depth data → verify not sent to ad SDKs
-- **(5.1.2vii)** If Apple Pay → verify `PKPayment` data not shared beyond delivery
-
-**Guideline 5.1.3 — Health and Health Research:**
-- Detect health packages:
-  - Flutter: `health`, `flutter_health_connect` | RN/Expo: `react-native-health`, `expo-health` | Native: `HealthKit`, `CareKit`, `ResearchKit`
-- If found → cross-check against ad/marketing SDKs for data sharing. Check for iCloud health data storage
-- If research features → verify consent flow UI exists (note as "Manual Check Required" for ethics board)
-
-**Guideline 5.1.4 — Kids:**
-- If app targets children → verify no third-party analytics/ads (see also 1.3)
-- Check "For Kids"/"For Children" not in metadata unless Kids Category (Guideline 2.3.8)
-- Verify parental gate if Kids Category
-
-**Guideline 5.1.5 — Location Services:**
-- Detect location usage:
-  - Flutter: `geolocator`, `location`, `background_locator`
-  - RN/Expo: `expo-location`, `react-native-geolocation-service`
-  - Native: `CoreLocation`
-- Verify purpose strings are descriptive. Check background location justification
-
-**Guideline 5.2 — Intellectual Property (5.2.1–5.2.5):**
-- **(5.2.1)** Scan for copyrighted assets, third-party trademarks
-- **(5.2.2)** If third-party APIs used (YouTube, Spotify, Google Maps), flag TOS compliance check
-- **(5.2.3)** Scan for `ytdl-core`, media download from YouTube/SoundCloud/Vimeo. Flag `AVAssetExportSession` on third-party streams
-- **(5.2.4)** Scan strings for "Apple recommended", "Apple approved", "endorsed by Apple"
-- **(5.2.5)** Scan for Apple emoji in binary assets, UI mimicking Apple apps, Activity ring visualizations
-
-**Guideline 5.3 — Gaming, Gambling, and Lotteries (5.3.1–5.3.4):**
-- Scan for: "bet", "wager", "casino", "poker", "lottery", "sweepstakes" in code/strings
-- **(5.3.1)** If sweepstakes/contests → verify developer is the sponsor
-- **(5.3.2)** If sweepstakes/contests → verify official rules presented in-app stating Apple is not sponsor
-- **(5.3.3)** If gambling features → verify no IAP for credits/currency used in gambling
-- **(5.3.4)** If real-money gaming (sports betting, poker, casino, horse racing) → flag: licensing required, geo-restriction, must be free on App Store
-
-**Guideline 5.4 — VPN Apps:**
-- Detect: Native `NetworkExtension`, `NEVPNManager`, `NETunnelProviderManager` | Flutter: `flutter_vpn`, `wireguard_flutter` | RN: `react-native-vpn`
-- If found → flag: must use `NEVPNManager`, org account required, data disclosure before use
-
-**Guideline 5.5 — Mobile Device Management:**
-- Check for MDM entitlements/profiles → flag: commercial/edu/gov entity only
-
-**Guideline 5.6 — Developer Code of Conduct:**
-- Scan for dark patterns: hidden cancel buttons, misleading free trial UI, fake urgency/scarcity strings
-- **(5.6.3)** Scan for review manipulation: automated submissions, bot patterns, review-farming integrations
-
-### Step 7: Common Rejection Quick-Check
-
-1. **Crashes** — Swift force unwraps (!), Dart ! on nullables, JS unhandled rejections
-2. **Broken Links** — Hardcoded URLs, verify HTTPS
-3. **Incomplete Config** — Required Info.plist / app.json keys
-4. **Missing Privacy Descriptions** — All `NS*UsageDescription` for used permissions
-5. **No Privacy Policy URL** — Search "privacy policy" in code/config
-6. **Debug Code** — `print()`/`console.log()`, staging URLs, localhost
-7. **Hardcoded Credentials** — API keys, tokens, `.env` files
-8. **Missing Sign in with Apple** — When third-party login exists
-9. **Missing Account Deletion** — When account creation exists
-10. **Missing Privacy Manifest** — `PrivacyInfo.xcprivacy`
-
-## Output Format
+## Report
 
 ```
 # App Store Review Compliance Report
 
 ## Project Summary
-- **App Name:** [name]
-- **Bundle ID:** [id]
-- **Framework:** [detected framework]
-- **Deployment Target:** [version]
-- **Platforms:** [iOS/iPadOS/macOS]
+- **App Name:** … (n chars)   **Bundle ID:** …
+- **Framework:** …   **Deployment Target:** …   **Platforms:** …
+- **Build inspected:** yes (<artifact>) / no
+- **Guidelines version:** October 16, 2026
+
+## Summary
+| Severity | Count |
+|---|---|
+| Critical | n |
+| Warning | n |
+| Info | n |
+| Manual checks | n |
 
 ## Critical Issues (Will Likely Cause Rejection)
-
-### [CRITICAL] Guideline X.X.X — [Title]
-**Issue:** [Description]
-**Location:** [File:Line]
-**Fix:** [Framework-specific fix]
+<findings, highest confidence first>
 
 ## Warnings (May Cause Rejection)
-
-### [WARNING] Guideline X.X.X — [Title]
-**Issue:** [Description]
-**Location:** [File:Line]
-**Fix:** [Recommended fix]
+<findings>
 
 ## Recommendations (Best Practices)
+<INFO findings — at most 8, most useful first>
 
-### [INFO] Guideline X.X.X — [Title]
-**Suggestion:** [Description]
-
-## Checklist Summary
-- [ ] Project type & framework detected
-- [ ] Info.plist / app.json metadata complete
-- [ ] App display name ≤ 30 characters
-- [ ] No references to other mobile platforms
-- [ ] All NS*UsageDescription keys present
-- [ ] No hardcoded secrets or API keys
-- [ ] App Transport Security configured
-- [ ] Privacy manifest present and complete
-- [ ] Privacy policy URL in app
-- [ ] Data minimization — pickers over full access
-- [ ] Sign in with Apple (if third-party login)
-- [ ] Account deletion (if account creation)
-- [ ] IAP for digital goods
-- [ ] Restore Purchases exists (if IAP/subscriptions)
-- [ ] Subscription terms before purchase
-- [ ] No debug/test code in production
-- [ ] No placeholder/TODO content
-- [ ] No beta/trial/demo labels
-- [ ] No dynamic code loading / hot-patching
-- [ ] Background modes match actual usage
-- [ ] No ads in extensions/widgets/App Clips
-- [ ] ATT implemented (if tracking/ad SDKs)
-- [ ] UGC moderation (if UGC exists)
-- [ ] Support URL accessible in-app
-- [ ] No on-device crypto mining
-- [ ] No dark patterns in purchase flows
-- [ ] No illegal media downloading
+## Manual Check Required (App Store Connect & things code can't show)
+- [ ] <specific item, e.g. "Demo account for the Supabase login in App Review Information">
+- [ ] <e.g. "Describe the Remote Config–gated 'Studio' feature in Notes for Review (2.3.1(a))">
+- [ ] <e.g. "Privacy nutrition label must declare: crash data (Sentry), product interaction (PostHog)">
+- [ ] <e.g. "Creative assets & screenshots follow 2.3.3 / 2.3.14 (no prices, no unverifiable claims)">
 
 ## Final Verdict
-READY / NEEDS FIXES / HIGH RISK — with summary
+**HIGH RISK** / **NEEDS FIXES** / **LOW RISK** — one-paragraph summary and the top 3 things to fix first.
+
+_Static analysis of public guidelines; it cannot guarantee approval. Skipped checks: <list or none>._
 ```
+
+Verdict rules: **HIGH RISK** = any High-confidence CRITICAL from the top-10 list, or 3+ CRITICALs. **NEEDS FIXES** = any CRITICAL, or 3+ WARNINGs. **LOW RISK** = otherwise. Never write "READY" or imply guaranteed approval.
+
+If `--fix` was not passed and there are fixable findings, end with one line: `Run /appstore-review --fix to apply the safe fixes automatically (n available).`
+
+## Phase 5 — Fix mode (`--fix` only)
+
+Only after the report is printed.
+
+**Apply directly (safe, mechanical):**
+- Missing/empty/generic `NS*UsageDescription` for permissions the app actually uses — write a specific purpose string from the feature you found (Expo: `expo.ios.infoPlist` or the config plugin's permission option; Flutter/RN/native: `Info.plist`).
+- `NSAllowsArbitraryLoads: true` → replace with `NSExceptionDomains` for the specific HTTP hosts found in code (or remove if none).
+- Missing `PrivacyInfo.xcprivacy` → create it (Expo SDK 50+: `expo.ios.privacyManifests`) with required-reason API entries backed by evidence; mark each chosen reason code with a comment/note for the developer to confirm.
+- `.env` / secret files not in `.gitignore` → add them (never delete files; tell the user to rotate any leaked server key).
+- `eas.json` production profile with `developmentClient: true` → remove it.
+
+**Ask first (show a short plan + file list, wait for a yes):** Restore Purchases button, subscription terms near the purchase button, in-app account deletion flow, Sign in with Apple, ATT prompt before tracking, UGC/AI report-block-filter, replacing external payments with IAP.
+
+**Never:** change pricing/business logic silently, delete features, edit generated native folders when the project regenerates them (Expo managed `ios/`), commit, or push.
+
+After fixing: re-run the relevant checks on the changed files and print a **Fix Summary** table (finding → status Fixed / Needs review / Skipped → files changed). Remind the user to rebuild (`npx expo prebuild --clean` for Expo) and re-run `/appstore-review`.
 
 ## Important Notes
 
-- Be thorough but avoid false positives
-- Always reference the specific guideline number
-- Provide framework-specific fix suggestions
-- If something cannot be determined from code, note as "Manual Check Required"
-- Consider app context — a medical app has different requirements than a game
-- For cross-platform projects, check BOTH shared code AND iOS native layer
+- For cross-platform projects, check BOTH shared code AND the iOS native layer / config plugins.
+- Consider app context — a medical app has different requirements than a game.
+- If something cannot be determined from code, put it under Manual Check Required instead of guessing.
+- Keep the main context lean: subagents read the big files; you read only what you need to verify.

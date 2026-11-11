@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">StrideClub</string>
+    <string name="sign_up">Create account</string>
+    <string name="log_out">Log out</string>
+    <string name="change_avatar">Change photo</string>
+    <string name="notif_rationale_title">Stay on pace</string>
+    <string name="notif_rationale_body">Turn on notifications to get reminders for your club runs and a summary after each workout. You can change this anytime in Settings.</string>
+    <string name="not_now">Not now</string>
+    <string name="continue_label">Continue</string>
+    <string name="privacy_policy_url">https://strideclub.app/privacy</string>
+</resources>
