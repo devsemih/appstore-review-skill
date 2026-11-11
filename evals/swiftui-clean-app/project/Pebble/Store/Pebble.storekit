@@ -1,0 +1,46 @@
+{
+  "identifier" : "7D2E4F1A",
+  "nonRenewingSubscriptions" : [ ],
+  "products" : [ ],
+  "settings" : { "_failTransactionsEnabled" : false, "_locale" : "en_US", "_storefront" : "USA" },
+  "subscriptionGroups" : [
+    {
+      "id" : "21482947",
+      "localizations" : [ ],
+      "name" : "Pebble Plus",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [ ],
+          "codeOffers" : [ ],
+          "displayPrice" : "3.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "6739102841",
+          "introductoryOffer" : null,
+          "localizations" : [ { "description" : "Unlimited entries, themes and iCloud backup", "displayName" : "Pebble Plus Monthly", "locale" : "en_US" } ],
+          "productID" : "app.pebblejournal.plus.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Plus Monthly",
+          "subscriptionGroupID" : "21482947",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [ ],
+          "codeOffers" : [ ],
+          "displayPrice" : "29.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "6739102842",
+          "introductoryOffer" : null,
+          "localizations" : [ { "description" : "Unlimited entries, themes and iCloud backup", "displayName" : "Pebble Plus Yearly", "locale" : "en_US" } ],
+          "productID" : "app.pebblejournal.plus.yearly",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "Plus Yearly",
+          "subscriptionGroupID" : "21482947",
+          "type" : "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version" : { "major" : 4, "minor" : 0 }
+}

@@ -1,0 +1,16 @@
+schema_version: "1.1"
+name: swiftui-clean-app
+description: >-
+  Deliberately compliant native SwiftUI app. Measures false positives: expect no CRITICAL findings and a low-risk verdict.
+tags: [appstore, native, false-positive]
+runs: 3
+expected_outcome: See EXPECTED.md in this directory (answer key; not copied into the run workspace).
+context:
+  # Copies ./project into the empty run workspace. Needs --scaffold.
+  scaffold_script: scaffold.sh
+execution:
+  max_turns: 80
+  timeout_seconds: 1800
+  append_system_prompt: >-
+    When a skill or subagent returns an audit report, reproduce that full report
+    verbatim as your final reply. Do not summarize, shorten, or reformat it.
