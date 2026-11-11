@@ -1,0 +1,18 @@
+name: Bug or feature idea
+description: Something broke, or a check/feature you'd like to see
+labels: ["triage"]
+body:
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Type
+      options: [Bug, Missing check, Feature idea, Docs]
+    validations:
+      required: true
+  - type: textarea
+    id: details
+    attributes:
+      label: Details
+      description: What happened / what you'd like. For bugs, include the command you ran and your Claude Code version (`claude --version`).
+    validations:
+      required: true
