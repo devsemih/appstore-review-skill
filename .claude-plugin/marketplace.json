@@ -11,8 +11,8 @@
     {
       "name": "appstore-review-skill",
       "source": "./",
-      "description": "Checks mobile app projects against Apple's App Store Review Guidelines and Google Play's Developer Program Policies before submission.",
-      "version": "1.2.0",
+      "description": "App Store & Google Play rejection checker for mobile apps: audits your project (and built .ipa/.aab) against Apple's App Review Guidelines and Google Play policies before you submit, applies safe fixes, and turns rejection messages into root-cause fixes and Resolution Center replies. Works with Swift, Kotlin, Flutter, React Native, Expo, KMP, .NET MAUI, Capacitor/Cordova/Ionic and Unity.",
+      "version": "2.0.0",
       "author": {
         "name": "Semih Aslan"
       },
@@ -31,7 +31,11 @@
         "kotlin",
         "flutter",
         "react-native",
-        "expo"
+        "expo",
+        "app-review",
+        "rejection",
+        "privacy-manifest",
+        "claude-code-plugin"
       ]
     }
   ]
