@@ -157,7 +157,7 @@ If the Agent tool is unavailable, run slices A → B → C yourself, loading one
 ## Finding format
 
 ```
-### [CRITICAL] Policy: User Data — Account Deletion
+### [CRITICAL] Policy: User Data / Account Deletion
 **Confidence:** High
 **Issue:** Firebase Auth sign-up exists but there is no in-app account deletion and no web deletion link.
 **Evidence:** `app/src/main/java/com/example/auth/SignUpActivity.kt:41` — `createUserWithEmailAndPassword(...)`; searched for `currentUser.delete`, "delete account", "deleteAccount" — none.

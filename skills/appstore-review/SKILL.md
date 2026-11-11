@@ -156,7 +156,7 @@ If the Agent tool is unavailable, run slices C → B → A yourself in that orde
 ## Finding format
 
 ```
-### [CRITICAL] Guideline 4.8 — Login Services
+### [CRITICAL] Guideline 4.8: Login Services
 **Confidence:** High
 **Issue:** Google sign-in creates the primary account; no equivalent privacy-focused login (e.g. Sign in with Apple) is offered.
 **Evidence:** `app/(auth)/login.tsx:23` — `Google.useAuthRequest({...})`; searched for `expo-apple-authentication`, `AppleAuthentication`, `ASAuthorizationAppleIDProvider` — none.

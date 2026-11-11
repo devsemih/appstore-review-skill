@@ -1,6 +1,6 @@
 name: False positive
 description: The audit flagged something that isn't actually a problem
-title: "[False positive] <guideline or policy> — <short description>"
+title: "[False positive] <guideline or policy>: <short description>"
 labels: ["false-positive"]
 body:
   - type: dropdown

@@ -1,6 +1,6 @@
-# App Store & Google Play Rejection Checker for Claude Code
+# appstore-review-skill
 
-> Catch App Store and Google Play rejections **before** you submit, and fix them fast when they happen anyway.
+A Claude Code plugin that checks iOS and Android apps against Apple's App Review Guidelines and Google Play's Developer Program Policies before you submit. When a review comes back rejected, it finds the cause in your code and drafts the reply.
 
 [![GitHub stars](https://img.shields.io/github/stars/devsemih/appstore-review-skill?style=flat)](https://github.com/devsemih/appstore-review-skill/stargazers)
 [![Version](https://img.shields.io/github/v/release/devsemih/appstore-review-skill?label=version)](https://github.com/devsemih/appstore-review-skill/releases)
@@ -8,242 +8,191 @@
 [![Play policies](https://img.shields.io/badge/Play%20policies-Oct%2029%2C%202026-green)](https://play.google/developer-content-policy/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-A Claude Code plugin with four commands:
+![Demo: App Store audit, fix mode, Google Play audit and a rejection reply](assets/demo.gif)
+
+<sub>The demo uses made-up projects. Run `python3 assets/render-demo.py` to regenerate it.</sub>
+
+## Commands
 
 | Command | What it does |
 |---------|--------------|
-| `/appstore-review` | Audits your project (and optionally your built `.ipa`) against Apple's [App Store Review Guidelines](https://developer.apple.com/app-store/review/guidelines/) |
-| `/playstore-review` | Audits your project (and optionally your `.aab`/`.apk`) against Google Play's [Developer Program Policies](https://play.google/developer-content-policy/) |
-| `/appstore-rejection` | Paste an App Review rejection to get the root cause in your code, a fix, and a ready-to-send Resolution Center reply |
-| `/playstore-rejection` | Paste a Play policy email to get the root cause, a fix-or-appeal decision, the Play Console forms to update, and an appeal draft |
+| `/appstore-review` | Audits your project, and optionally the built `.ipa`, against the [App Store Review Guidelines](https://developer.apple.com/app-store/review/guidelines/) |
+| `/playstore-review` | Audits your project, and optionally the `.aab` or `.apk`, against the [Google Play Developer Program Policies](https://play.google/developer-content-policy/) |
+| `/appstore-rejection` | Takes an App Review rejection message, finds the cause in your code, proposes a fix and drafts a Resolution Center reply |
+| `/playstore-rejection` | Takes a Google Play policy email, finds the cause, tells you whether to fix or appeal, lists the Play Console forms to update and drafts the appeal |
 
-Works with **Swift, Kotlin, Flutter, React Native, Expo, Kotlin Multiplatform, .NET MAUI, Capacitor/Cordova/Ionic and Unity**.
-
-## What's new in 2.0
-
-- **Rejection responders.** `/appstore-rejection` and `/playstore-rejection` turn a rejection message into a diagnosis and a reply.
-- **Binary inspection (`--build`).** Finds likely ITMS-91053 / ITMS-91061 privacy-manifest problems in third-party SDKs, and SDK-injected Android permissions, before Apple or Google email you about them.
-- **`--fix`.** Applies safe fixes automatically (purpose strings, privacy manifest, ATS, unused permissions…). Larger changes are planned first and wait for your OK.
-- **Up to date.** Covers Apple's **October 16, 2026** guidelines (AI content apps under 1.2, new 2.3.14 and 2.5.19, rewritten 4.3) and Google Play's **October 29, 2026** policy update.
-- **Faster, quieter reports.** Three parallel subagents do the audit. Every finding has a confidence level and `file:line` evidence, every CRITICAL is re-verified before it's reported, and items for App Store Connect / Play Console get their own "Manual Check Required" section.
-
-See the [CHANGELOG](CHANGELOG.md) for details.
+Supported project types: Swift, Kotlin/Java, Flutter, React Native, Expo, Kotlin Multiplatform, .NET MAUI, Capacitor, Cordova, Ionic and Unity.
 
 ## Installation
 
-### Via Plugin Manager (Recommended)
+With the plugin manager (recommended):
 
 ```
 /plugin marketplace add devsemih/appstore-review-skill
 /plugin install appstore-review-skill
 ```
 
-### Via Git Clone
+Or clone it into your skills folder:
 
 ```bash
 git clone https://github.com/devsemih/appstore-review-skill ~/.claude/skills/appstore-review-skill
 ```
 
-Then restart Claude Code. To update, run `/plugin marketplace update` (or `git pull` in the clone).
+Restart Claude Code after installing. To update, run `/plugin marketplace update`, or `git pull` inside the clone.
 
 ## Usage
 
-Open your project in Claude Code:
+Run these inside your project in Claude Code:
 
 ```
-/appstore-review                                   # audit the current project for the App Store
-/appstore-review --build build/MyApp.ipa           # also inspect the built binary (ITMS-91053/91061)
-/appstore-review --fix                             # audit, then apply safe fixes
+/appstore-review                                   # audit the project for the App Store
+/appstore-review --build build/MyApp.ipa           # also inspect the built binary
+/appstore-review --fix                             # audit, then apply the safe fixes
 /playstore-review --build app/build/outputs/bundle/release/app-release.aab
 ```
 
-Got rejected? Paste the message:
+If you were rejected, paste the message or point to a file:
 
 ```
-/appstore-rejection Guideline 5.1.1(v) - Data Collection and Storage. We noticed that your app supports account creation but does not include an option to initiate account deletion…
+/appstore-rejection Guideline 5.1.1(v) - Data Collection and Storage. We noticed that your app supports account creation but does not include an option to initiate account deletion...
 /playstore-rejection path/to/policy-email.txt
 ```
 
-You get the cited rule, the root cause with `file:line`, a fix (applied only after you confirm), and a reply you can paste into the Resolution Center or the Play Console appeal form.
+You get the rule that was cited, the root cause with a `file:line`, a proposed fix (applied only after you confirm) and a reply you can paste into the Resolution Center or the Play Console appeal form.
+
+## What's new in 2.0
+
+- Two new commands, `/appstore-rejection` and `/playstore-rejection`.
+- `--build` inspects the built app. On iOS it looks for the privacy manifest problems behind ITMS-91053, ITMS-91061 and ITMS-90683 emails. On Android it reads the merged manifest, including permissions added by SDKs.
+- `--fix` applies safe, mechanical fixes such as purpose strings, privacy manifest entries, ATS exceptions and unused permissions. Larger changes are planned first and wait for your approval.
+- Apple's guidelines are updated to the October 16, 2026 revision and Google Play's policies to the October 29, 2026 update.
+- Reports are more reliable. The audit runs as three parallel subagents, every finding has a confidence level and a `file:line`, every critical finding is checked again before it is reported, and items you have to verify in App Store Connect or Play Console are listed separately.
+
+The full list is in the [CHANGELOG](CHANGELOG.md).
 
 ## How it works
 
-```
-1. Detect     framework, config files, dependencies, and features  →  one "Project Facts" summary
-2. Inspect    (optional) the built .ipa / .aab: what the store actually reviews
-3. Audit      3 subagents in parallel, each loading only its slice of the guidelines
-                A: Safety + Performance    B: Business + Design    C: Privacy + Legal
-4. Verify     every CRITICAL re-checked at its file:line, duplicates merged, top-10 gap check
-5. Report     Critical / Warning / Info / Manual Check Required, verdict: LOW RISK · NEEDS FIXES · HIGH RISK
-6. Fix        (--fix) safe fixes applied, bigger ones proposed, re-checked, Fix Summary table
-```
+1. Detect the framework, config files, dependencies and features, and write them into one short summary.
+2. Optionally inspect the built `.ipa` or `.aab`, since that is what the store actually reviews.
+3. Run three subagents in parallel. Each one loads only its part of the guidelines: safety and performance, business and design, or privacy and legal.
+4. Re-check every critical finding at its `file:line`, merge duplicates and run a final pass over the ten most common rejection reasons.
+5. Write the report with critical issues, warnings, recommendations, manual checks and a verdict of LOW RISK, NEEDS FIXES or HIGH RISK.
+6. With `--fix`, apply the safe fixes, propose the larger ones, re-check and print a summary of what changed.
 
-The guideline text ships verbatim in [`references/`](references/), split by section and loaded on demand, so the skill quotes the actual rule rather than recalling it from memory.
+The guideline text is included in [`references/`](references/), split by section, so the skill quotes the actual rule instead of recalling it from memory.
 
 ## Accuracy
 
 <!-- EVAL_RESULTS -->
 
-The [`evals/`](evals/) suite runs the skills against fixture apps with planted violations and decoys (code that looks suspicious but is fine) using `claude plugin eval`. See [`evals/README.md`](evals/README.md) to run it yourself. False positive? [Report it](https://github.com/devsemih/appstore-review-skill/issues/new?template=false-positive.yml) and it becomes a regression test.
+The [`evals/`](evals/) folder contains fixture apps with planted violations, plus decoys that look suspicious but are fine. It runs with `claude plugin eval`; see [`evals/README.md`](evals/README.md) to try it yourself. If you hit a false positive, please [report it](https://github.com/devsemih/appstore-review-skill/issues/new?template=false-positive.yml) so it can become a test case.
 
----
+## What gets checked
 
-## `/appstore-review` — What Gets Checked
+### `/appstore-review`
 
-### Section 1 — Safety
+Section 1, Safety
 - Objectionable content in strings and resources
-- **UGC and AI content apps (1.2, updated Oct 2026)**: filtering, reporting, blocking, and safeguards against nonconsensual imagery
-- Kids Category compliance (no third-party analytics/ads)
-- Medical app disclaimers and physical harm checks
-- Developer contact / support URL accessibility
-- Data security (ATS, hardcoded server secrets, secure storage)
+- User generated content and AI content creation apps (guideline 1.2, updated October 2026): filtering, reporting, blocking and protection against nonconsensual imagery
+- Kids Category rules, medical apps, physical harm
+- Support and contact information
+- Data security: ATS, hardcoded server secrets, secure storage
 
-### Section 2 — Performance
-- App completeness (placeholders, debug code, staging URLs)
-- Beta / trial / demo labels in the production app (must use TestFlight)
-- All `NS*UsageDescription` keys cross-checked against the SDKs actually used
-- Other-platform references in **user-facing** text only (2.3.10)
-- **Hidden / dormant features (2.5.19, new)**: reviewer detection, undisclosed remote unlocks
+Section 2, Performance
+- Placeholder content, debug code and staging URLs in release builds
+- Beta, trial or demo labels in the production app
+- Every `NS*UsageDescription` checked against the SDKs that need it
+- Mentions of other platforms in user-facing text (2.3.10)
+- Hidden or dormant features (2.5.19, new in October 2026)
 - iPad support, private APIs, dynamic code loading, background modes, IPv6
 
-### Section 3 — Business
-- In-App Purchase compliance (digital goods must use IAP); Stripe/PayPal for digital content
-- External purchase links and entitlements (3.1.1(a), updated Oct 2026)
-- Restore Purchases and subscription terms shown before the purchase button
-- Loot box odds, review prompt abuse, crypto, loans, trading
+Section 3, Business
+- In-app purchase for digital goods, and Stripe or PayPal used for digital content
+- External purchase links and entitlements (3.1.1(a))
+- Restore purchases, and subscription terms shown before the purchase button
+- Loot box odds, review prompts, crypto, loans and trading apps
 
-### Section 4 — Design
-- Minimum functionality (web wrapper detection, template apps)
-- **Spam (4.3, rewritten Oct 2026)**: white-label / multi-bundle setups, saturated categories
-- **Login services (4.8)**: an equivalent privacy-focused login when social login exists, with exceptions
-- Extensions, App Clips, Live Activities and push abuse, Apple Pay, mini apps
+Section 4, Design
+- Minimum functionality: web wrappers and template apps
+- Spam (4.3, rewritten in October 2026): white-label setups with many bundle IDs, saturated categories
+- Login services (4.8): an equivalent privacy-focused login when social login is offered, with the listed exceptions
+- Extensions, App Clips, Live Activities, push notifications, Apple Pay, mini apps
 
-### Section 5 — Privacy & Legal
-- `PrivacyInfo.xcprivacy`, required-reason APIs, third-party SDK manifests (with `--build`: actual binary symbols)
-- **Account deletion** when account creation exists
-- App Tracking Transparency for ad/analytics SDKs
-- Health, kids, and location data rules; IP; gambling; VPN; MDM; dark patterns
+Section 5, Privacy and legal
+- `PrivacyInfo.xcprivacy`, required-reason APIs and third-party SDK manifests (with `--build`, based on the actual binary)
+- Account deletion when the app lets users create an account
+- App Tracking Transparency for ad and analytics SDKs
+- Health, kids and location data, intellectual property, gambling, VPN, MDM and dark patterns
 
-## `/playstore-review` — What Gets Checked
+### `/playstore-review`
 
-- **Privacy & user data:** privacy policy in-app, Data safety consistency per SDK, prominent disclosure, account deletion (in-app + web), Advertising ID
-- **Permissions:** SMS/Call Log (incl. the Jan 2027 call-verification change), `QUERY_ALL_PACKAGES`, `MANAGE_EXTERNAL_STORAGE`, Accessibility, **new Local Network and Contacts declarations**, **location minimum scope / location button**, Photo Picker, foreground service types, exact alarms, full-screen intent, unused permissions
-- **Monetization & ads:** Play Billing for digital goods, subscription and trial disclosures (incl. **eligibility-based discounts**), disruptive ads, UMP consent
-- **Restricted content:** financial services and loan rules, gambling, UGC moderation, health, blockchain, **AI-generated content**, age-restricted features
-- **Abuse & deception:** dynamic code loading, hidden features, review manipulation, **AppFunctions**, ad fraud, fake system dialogs, malware basics
-- **Families:** certified ad SDKs only, no AAID for child-directed apps, neutral age screens
-- **Technical:** target API level, `debuggable`, cleartext traffic, committed keystores and service-account keys, metadata policy
+- Privacy and user data: privacy policy inside the app, Data safety declarations for each SDK, prominent disclosure, account deletion in the app and on the web, Advertising ID
+- Permissions: SMS and Call Log (including the January 2027 change to call-based verification), `QUERY_ALL_PACKAGES`, `MANAGE_EXTERNAL_STORAGE`, Accessibility, the new Local Network and Contacts declarations, minimum location scope and the location button, the Photo Picker, foreground service types, exact alarms, full-screen intents and unused permissions
+- Monetization and ads: Play Billing for digital goods, subscription and trial disclosures including eligibility-based discounts, disruptive ads, consent before personalized ads
+- Restricted content: financial services and loans, gambling, user generated content, health, blockchain, AI-generated content, age-restricted features
+- Abuse and deception: dynamic code loading, hidden features, review manipulation, AppFunctions, ad fraud, fake system dialogs
+- Families: certified ad SDKs only, no Advertising ID in apps for children, neutral age screens
+- Technical: target API level, `debuggable`, cleartext traffic, committed keystores and service account keys, store listing metadata
 
-## Example Report
+## Example report
 
 <details>
-<summary><b>Expo project (App Store)</b></summary>
+<summary>Expo project, App Store (shortened)</summary>
 
 ```
 # App Store Review Compliance Report
 
 ## Project Summary
-- App Name: MyExpoApp (9 chars)   Bundle ID: com.example.myexpoapp
+- App Name: Pulse (5 chars)   Bundle ID: com.pulsefit.app
 - Framework: Expo SDK 57 (managed)   Deployment Target: iOS 16.0
-- Build inspected: yes (build/MyExpoApp.ipa)   Guidelines version: October 16, 2026
-
-## Summary
-| Severity | Count |
-|---|---|
-| Critical | 2 |
-| Warning | 1 |
-| Info | 1 |
-| Manual checks | 4 |
+- Build inspected: yes (build/Pulse.ipa)   Guidelines version: October 16, 2026
 
 ## Critical Issues (Will Likely Cause Rejection)
 
-### [CRITICAL] Guideline 4.8 — Login Services
+### [CRITICAL] Guideline 4.8: Login Services
 **Confidence:** High
-**Issue:** Google sign-in creates the primary account; no equivalent privacy-focused login is offered.
-**Evidence:** `app/(auth)/login.tsx:23` — `Google.useAuthRequest({...})`; searched for expo-apple-authentication / AppleAuthentication — none.
-**Fix:** npx expo install expo-apple-authentication, add the Apple button, set ios.usesAppleSignIn: true.
+**Issue:** Google sign-in creates the main account and no equivalent privacy-focused login is offered.
+**Evidence:** `app/(auth)/login.tsx:23`, `Google.useAuthRequest({...})`. Searched for expo-apple-authentication and AppleAuthentication, found neither.
+**Fix:** Run npx expo install expo-apple-authentication, add the Apple button and set ios.usesAppleSignIn to true.
 
-### [CRITICAL] Guideline 5.1.1 — Privacy manifest (ITMS-91053)
+### [CRITICAL] Guideline 5.1.1: Privacy manifest (ITMS-91053)
 **Confidence:** High
-**Issue:** The binary uses file-timestamp APIs, but no manifest declares NSPrivacyAccessedAPICategoryFileTimestamp.
-**Evidence:** build inspection — `POSSIBLE ITMS-91053: main binary references NSPrivacyAccessedAPICategoryFileTimestamp APIs (_stat ...) but no applicable privacy manifest declares this category`
-**Fix:** Add the category with reason C617.1 under expo.ios.privacyManifests in app.json.
-
-## Warnings (May Cause Rejection)
-
-### [WARNING] Guideline 5.1.1(i) — Privacy policy link inside the app
-**Confidence:** Medium
-...
+**Issue:** ExpoFileSystem uses disk space APIs, but no privacy manifest declares the DiskSpace category.
+**Evidence:** build inspection: `POSSIBLE ITMS-91053: framework 'ExpoFileSystem' references NSPrivacyAccessedAPICategoryDiskSpace APIs ...`
+**Fix:** Add the category with reason E174.1 under expo.ios.privacyManifests in app.json.
 
 ## Manual Check Required
-- [ ] Demo account for the Supabase login in App Review Information
-- [ ] Privacy nutrition label: crash data (Sentry), product interaction (PostHog)
-- [ ] Describe the Remote Config–gated "Studio" feature in Notes for Review (2.3.1(a))
-- [ ] Screenshots / creative assets follow 2.3.3 and 2.3.14
+- [ ] Demo account for the login in App Review Information
+- [ ] Privacy nutrition labels: crash data (Sentry), product interaction (PostHog)
+- [ ] Screenshots and creative assets follow 2.3.3 and 2.3.14
 
 ## Final Verdict
-**HIGH RISK**: fix Sign in with Apple and the privacy manifest first; both are automatic rejections.
+**HIGH RISK**: add Sign in with Apple and fix the privacy manifest first.
 
 Run /appstore-review --fix to apply the safe fixes automatically (2 available).
 ```
 </details>
 
-<details>
-<summary><b>Kotlin project (Google Play)</b></summary>
+## Policy versions
 
-```
-# Google Play Policy Compliance Report
+| Commands | Source | Version |
+|----------|--------|---------|
+| `/appstore-review`, `/appstore-rejection` | [App Store Review Guidelines](https://developer.apple.com/app-store/review/guidelines/), sections 1 to 5, full text split by section | October 16, 2026 |
+| `/playstore-review`, `/playstore-rejection` | [Google Play Developer Program Policies](https://play.google/developer-content-policy/), all policy areas, summarized | July 2026 plus the October 29, 2026 update |
 
-## Project Summary
-- App Name: MyApp   Application ID: com.example.myapp
-- Framework: Native Kotlin   Target SDK / Min SDK: 35 / 24
-- Declared Permissions: 9 (2 restricted)   Build inspected: yes (app-release.aab)
-
-## Critical Issues (Will Likely Cause Rejection/Removal)
-
-### [CRITICAL] Policy: Permissions — QUERY_ALL_PACKAGES Without Qualifying Use Case
-**Confidence:** High
-**Issue:** The merged manifest declares QUERY_ALL_PACKAGES; the app only opens two partner apps.
-**Evidence:** `app/src/main/AndroidManifest.xml:12` — `<uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"/>`
-**Fix:** Replace it with a <queries> element listing the two packages.
-
-### [CRITICAL] Policy: User Data — Account Deletion
-**Confidence:** High
-**Issue:** Firebase Auth sign-up exists, but there is no in-app or web account deletion.
-**Evidence:** `auth/SignUpActivity.kt:41` — `createUserWithEmailAndPassword(...)`; searched for currentUser.delete, "delete account" — none.
-**Fix:** Add a Delete account flow in Settings and the web deletion URL in the Data safety form.
-
-## Declarations Required in Play Console
-- [ ] Data safety: Firebase Analytics (app interactions, device IDs)
-- [ ] Location permissions declaration (ACCESS_FINE_LOCATION, required for API 37+)
-
-## Final Verdict
-**HIGH RISK**: two critical issues must be resolved before submission.
-```
-</details>
-
-## Policy Coverage & Versions
-
-| Skill | Source | Version |
-|-------|--------|---------|
-| `/appstore-review`, `/appstore-rejection` | [App Store Review Guidelines](https://developer.apple.com/app-store/review/guidelines/), Sections 1–5 (verbatim, split by section) | October 16, 2026 |
-| `/playstore-review`, `/playstore-rejection` | [Google Play Developer Program Policies](https://play.google/developer-content-policy/), all policy areas (summary) | July 2026 + October 29, 2026 update |
-
-Apple and Google update these policies several times a year. If you spot a mismatch, please open an issue or PR.
+Apple and Google change these policies several times a year. If something looks out of date, please open an issue or a pull request.
 
 ## Contributing
 
-PRs welcome. The most useful contributions:
+Pull requests are welcome. These help the most:
 
-- **[Share a rejection](https://github.com/devsemih/appstore-review-skill/issues/new?template=rejection-report.yml).** Real rejections become new checks and eval cases.
-- **[Report a false positive](https://github.com/devsemih/appstore-review-skill/issues/new?template=false-positive.yml).** It helps keep reports quiet.
-- **Add checks:** `skills/*/checks/*.md` (detection hints) plus an eval case in `evals/`.
-- **Update policies:** `references/appstore/` and `references/playstore/`.
+- [Share a rejection](https://github.com/devsemih/appstore-review-skill/issues/new?template=rejection-report.yml). Real rejections turn into new checks and test cases.
+- [Report a false positive](https://github.com/devsemih/appstore-review-skill/issues/new?template=false-positive.yml).
+- Add a check in `skills/*/checks/*.md` together with a test case in `evals/`.
+- Update the policy text in `references/appstore/` or `references/playstore/`.
 
 ## License
 
 MIT, see [LICENSE](LICENSE).
 
----
-
-**Disclaimer:** This plugin checks against publicly available Apple and Google policies. It does not guarantee store approval. Always review the official [App Store guidelines](https://developer.apple.com/app-store/review/guidelines/) and [Google Play policies](https://play.google/developer-content-policy/) before submission.
+This plugin checks your app against publicly available Apple and Google policies. It can't guarantee approval, so always read the official [App Store guidelines](https://developer.apple.com/app-store/review/guidelines/) and [Google Play policies](https://play.google/developer-content-policy/) before you submit.

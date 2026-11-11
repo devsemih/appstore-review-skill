@@ -1,12 +1,12 @@
 name: Rejection report
 description: Share a real App Store / Google Play rejection so it becomes a new check
-title: "[Rejection] <store> — <guideline or policy>"
+title: "[Rejection] <store>: <guideline or policy>"
 labels: ["rejection-report"]
 body:
   - type: markdown
     attributes:
       value: |
-        Real rejections are the most valuable input for this plugin — each one can become a new check.
+        Each real rejection can become a new check.
         **Remove anything private** (app names, bundle IDs, reviewer names, credentials) before posting.
   - type: dropdown
     id: store
@@ -46,7 +46,7 @@ body:
     id: caught
     attributes:
       label: Did /appstore-review or /playstore-review catch it?
-      options: ["Yes", "No — it was missed", "Didn't run it before submitting"]
+      options: ["Yes", "No, it was missed", "Didn't run it before submitting"]
   - type: textarea
     id: detect
     attributes:
