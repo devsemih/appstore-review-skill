@@ -1,5 +1,9 @@
 # appstore-review-skill
 
+<!-- yarkr:badges:start -->
+[![Indexed on Yarkr](https://api.yarkr.com/functions/v1/api/api/v1/badges/repos/devsemih/appstore-review-skill/version.svg)](https://yarkr.com/arks/devsemih/appstore-review-skill)
+<!-- yarkr:badges:end -->
+
 A Claude Code plugin that checks iOS and Android apps against Apple's App Review Guidelines and Google Play's Developer Program Policies before you submit. When a review comes back rejected, it finds the cause in your code and drafts the reply.
 
 [![GitHub stars](https://img.shields.io/github/stars/devsemih/appstore-review-skill?style=flat)](https://github.com/devsemih/appstore-review-skill/stargazers)
@@ -39,6 +43,40 @@ git clone https://github.com/devsemih/appstore-review-skill ~/.claude/skills/app
 ```
 
 Restart Claude Code after installing. To update, run `/plugin marketplace update`, or `git pull` inside the clone.
+
+<!-- yarkr:install:start -->
+## Install with Yarkr
+
+This repo is indexed on [Yarkr](https://yarkr.com/arks/devsemih/appstore-review-skill) as the ark [devsemih/appstore-review-skill](https://yarkr.com/arks/devsemih/appstore-review-skill), so its skills install into Claude Code, Codex, Cursor and other agent harnesses with one command.
+
+### CLI
+
+Install the whole ark, which Yarkr keeps equal to this repo:
+
+```bash
+npx yarkr-cli sync devsemih/appstore-review-skill
+```
+
+Or add individual skills:
+
+```bash
+npx yarkr-cli add skill:devsemih/appstore-review-skill/appstore-rejection
+npx yarkr-cli add skill:devsemih/appstore-review-skill/appstore-review
+npx yarkr-cli add skill:devsemih/appstore-review-skill/playstore-rejection
+```
+
+No Node.js? `curl -fsSL https://yarkr.com/install.sh | sh` (macOS, Linux) or `irm https://yarkr.com/install.ps1 | iex` (Windows PowerShell) installs `yarkr` as a standalone binary; then type `yarkr` in place of `npx yarkr-cli`.
+
+### MCP
+
+Connect your agent to the ark over MCP:
+
+```bash
+npx yarkr-cli mcp add devsemih/appstore-review-skill
+```
+
+Or point any MCP client at `https://api.yarkr.com/functions/v1/api/mcp/o/devsemih/appstore-review-skill`.
+<!-- yarkr:install:end -->
 
 ## Usage
 
